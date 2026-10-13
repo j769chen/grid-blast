@@ -19,14 +19,14 @@ interface BoardProps {
   preview: Preview | null;
   m: Metrics;
   fieldRef: Ref<View>;
-  onFieldLayout: () => void;
+  onBoardLayout: () => void;
   fx: FxSpec[];
 }
 
 const COLS = ['1', '2', '3', '4', '5', '6', '7', '8'];
 const ROWS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
 
-export const Board = memo(function Board({ grid, cores, preview, m, fieldRef, onFieldLayout, fx }: BoardProps) {
+export const Board = memo(function Board({ grid, cores, preview, m, fieldRef, onBoardLayout, fx }: BoardProps) {
   const origin = m.pad + m.gut;
   const labelSize = m.size * 0.03;
 
@@ -62,7 +62,7 @@ export const Board = memo(function Board({ grid, cores, preview, m, fieldRef, on
   }
 
   return (
-    <View style={styles.outline}>
+    <View onLayout={onBoardLayout} style={styles.outline}>
       <View style={[styles.board, { width: m.size, height: m.size }]}>
         <Text
           style={[
@@ -110,7 +110,6 @@ export const Board = memo(function Board({ grid, cores, preview, m, fieldRef, on
         ))}
         <View
           ref={fieldRef}
-          onLayout={onFieldLayout}
           style={{ position: 'absolute', left: origin, top: origin, width: m.field, height: m.field }}
         >
           {cells}

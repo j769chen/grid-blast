@@ -2,21 +2,18 @@ import { memo } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 
-import { ghostFrame, type DragShared } from '../drag';
+import { ghostFrame, OFFSCREEN, type DragShared } from '../drag';
 import type { Piece } from '../engine';
 import { PART_COLORS, span, type Metrics } from '../theme';
 import { Led } from './Led';
 
 function GhostPiece({ p, i, m, drag }: { p: Piece; i: number; m: Metrics; drag: DragShared }) {
   const style = useAnimatedStyle(() => {
-    const active = drag.slot.get() === i;
-    const held = !active && drag.pending.get() === i;
-    const f = active ? ghostFrame(drag, i) : drag.pendingFrame.get();
-    const shown = active || held;
+    const f = drag.slot.get() === i ? ghostFrame(drag, i) : drag.landing.get()[i];
     return {
-      opacity: shown ? 1 : 0,
-      left: shown ? f.x : -9999,
-      top: shown ? f.y : -9999,
+      opacity: f ? 1 : 0,
+      left: f ? f.x : OFFSCREEN,
+      top: f ? f.y : OFFSCREEN,
     };
   });
   return (
