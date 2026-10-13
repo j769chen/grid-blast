@@ -15,9 +15,10 @@ npx expo start
 
 ## Rules
 
+- A new game starts with a few parts already on the board.
 - Drag parts from the three sockets (U1–U3) onto the 8×8 board.
 - Fill a row or column to clear it. Rows and columns clear together.
-- When all three parts are placed, a new set is dealt.
+- When all three parts are placed, a new set is dealt. Every new set has at least one part that fits, counting rotations you can afford.
 - The game ends when no remaining part fits, counting rotations you can still afford.
 
 ## Rotation charges
@@ -44,7 +45,7 @@ Peak score, the game in progress, and the vibration setting are saved on the dev
 
 ## Dragging
 
-- Touch: the part floats about two cells above your finger and moves 1.4× as far, so your finger never hides the board.
+- Touch: the part's centre floats about two cells above your finger and moves 1.4× as far, so your finger stays clear of where it lands.
 - Mouse: the part sits on the cursor and moves with it 1:1.
 - The shadow and the drop use the nearest open spot within one cell of the part.
 
