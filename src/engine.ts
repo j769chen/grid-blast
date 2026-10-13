@@ -337,18 +337,38 @@ export function previewCells(s: GameState, p: Piece, r: number, c: number) {
   return { ghost, hint: [...lineCells(fullLines(g))], core: p.core >= 0 ? ghost[p.core] : -1 };
 }
 
+const isInt = (v: unknown, lo: number, hi: number): v is number =>
+  typeof v === 'number' && Number.isInteger(v) && v >= lo && v <= hi;
+
+function isPiece(x: unknown): x is Piece {
+  if (!x || typeof x !== 'object') return false;
+  const p = x as Record<string, unknown>;
+  if (!isInt(p.w, 1, N) || !isInt(p.h, 1, N) || !isInt(p.c, 0, COLOR_COUNT - 1)) return false;
+  const { w, h, cells } = p;
+  if (!Array.isArray(cells) || !cells.length) return false;
+  const ok = cells.every((cell) => Array.isArray(cell) && isInt(cell[0], 0, h - 1) && isInt(cell[1], 0, w - 1));
+  return ok && isInt(p.core, -1, cells.length - 1);
+}
+
 export function isGameState(x: unknown): x is GameState {
-  const g = x as GameState;
+  if (!x || typeof x !== 'object') return false;
+  const g = x as Record<string, unknown>;
+  const { grid, cores, tray } = g;
   return (
-    !!g &&
-    Array.isArray(g.grid) &&
-    g.grid.length === N * N &&
-    Array.isArray(g.cores) &&
-    g.cores.length === N * N &&
-    Array.isArray(g.tray) &&
-    g.tray.length === TRAY_SIZE &&
-    g.tray.every((p) => p === null || Array.isArray(p.cells)) &&
-    typeof g.score === 'number' &&
-    typeof g.charge === 'number'
+    Array.isArray(grid) &&
+    grid.length === N * N &&
+    grid.every((v) => isInt(v, -1, COLOR_COUNT - 1)) &&
+    Array.isArray(cores) &&
+    cores.length === N * N &&
+    cores.every((v) => typeof v === 'boolean') &&
+    Array.isArray(tray) &&
+    tray.length === TRAY_SIZE &&
+    tray.every((p) => p === null || isPiece(p)) &&
+    isInt(g.score, 0, Number.MAX_SAFE_INTEGER) &&
+    isInt(g.best, 0, Number.MAX_SAFE_INTEGER) &&
+    isInt(g.combo, 0, Number.MAX_SAFE_INTEGER) &&
+    isInt(g.idle, 0, Number.MAX_SAFE_INTEGER) &&
+    isInt(g.charge, 0, MAX_CHARGE) &&
+    typeof g.over === 'boolean'
   );
 }
