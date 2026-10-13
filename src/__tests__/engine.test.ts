@@ -2,6 +2,7 @@ import { describe, expect, it } from '@jest/globals';
 
 import {
   anyMove,
+  blastCells,
   cellIndex,
   fits,
   isGameState,
@@ -47,7 +48,7 @@ const column3: [number, number][] = [
 function blank(tray: (Piece | null)[], over: Partial<GameState> = {}): GameState {
   return {
     grid: Array(N * N).fill(-1),
-    cores: Array(N * N).fill(false),
+    cores: Array(N * N).fill(null),
     tray,
     score: 0,
     best: 0,
@@ -71,6 +72,7 @@ describe('rotate', () => {
       ],
       c: 0,
       core: 3,
+      coreKind: 'line',
     };
     const r = rotate(l);
     expect(r.w).toBe(3);
@@ -138,13 +140,16 @@ describe('placePiece', () => {
   it('detonates a core in a cleared row across its column, and chains', () => {
     const s = blank([single(), single(), single()]);
     for (let c = 1; c < N; c++) s.grid[c] = 0;
-    s.cores[3] = true;
+    s.cores[3] = 'line';
     for (let r = 1; r < 7; r++) s.grid[r * N + 3] = 5;
-    s.cores[6 * N + 3] = true;
+    s.cores[6 * N + 3] = 'line';
     s.grid[6 * N + 7] = 2;
     s.grid[7 * N + 0] = 2;
     const res = placePiece(s, 0, 0, 0, seeded())!;
-    expect(res.surges).toEqual([3, 6 * N + 3]);
+    expect(res.surges).toEqual([
+      { idx: 3, kind: 'line' },
+      { idx: 6 * N + 3, kind: 'line' },
+    ]);
     expect(res.state.grid[6 * N + 7]).toBe(-1);
     expect(res.state.grid[7 * N + 0]).toBe(2);
     expect(res.state.cores.some(Boolean)).toBe(false);
@@ -233,6 +238,8 @@ describe('isGameState', () => {
     expect(isGameState(tweak((s) => ((s.tray as Piece[])[0].cells = [[9, 9]])))).toBe(false);
     expect(isGameState(tweak((s) => ((s.tray as Piece[])[0].core = 99)))).toBe(false);
     expect(isGameState(tweak((s) => (s.tray as unknown[]).pop()))).toBe(false);
+    expect(isGameState(tweak((s) => ((s.cores as unknown[])[0] = true)))).toBe(false);
+    expect(isGameState(tweak((s) => ((s.tray as Piece[])[0].coreKind = 'huge' as Piece['coreKind'])))).toBe(false);
   });
 });
 
@@ -260,11 +267,11 @@ describe('cores', () => {
   it('detonates a core in a cleared column across its row', () => {
     const s = blank([single(), single(), single()]);
     for (let r = 1; r < N; r++) s.grid[cellIndex(r, 2)] = 0;
-    s.cores[cellIndex(4, 2)] = true;
+    s.cores[cellIndex(4, 2)] = 'line';
     s.grid[cellIndex(4, 6)] = 3;
     s.grid[cellIndex(5, 6)] = 3;
     const res = placePiece(s, 0, 0, 2, seeded())!;
-    expect(res.surges).toEqual([cellIndex(4, 2)]);
+    expect(res.surges).toEqual([{ idx: cellIndex(4, 2), kind: 'line' }]);
     expect(res.state.grid[cellIndex(4, 6)]).toBe(-1);
     expect(res.state.grid[cellIndex(5, 6)]).toBe(3);
     expect(res.gained).toBe(10 + 100 + 40);
@@ -320,5 +327,72 @@ describe('previewCells', () => {
     expect(pv.hint.sort((a, b) => a - b)).toEqual(Array.from({ length: N }, (_, c) => cellIndex(0, c)));
     expect(pv.core).toBe(cellIndex(0, 1));
     expect(previewCells(s, bar(2), 3, 3)).toMatchObject({ hint: [], core: -1 });
+  });
+});
+
+describe('area cores', () => {
+  const rowZeroBut = (open: number) => {
+    const s = blank([single(), single(), single()]);
+    for (let c = 0; c < N; c++) if (c !== open) s.grid[cellIndex(0, c)] = 1;
+    return s;
+  };
+
+  it('blast the 3×3 square around them when their line clears', () => {
+    const s = rowZeroBut(0);
+    s.cores[cellIndex(0, 4)] = 'area';
+    [
+      [1, 3],
+      [1, 4],
+      [1, 5],
+      [2, 4],
+      [1, 6],
+    ].forEach(([r, c]) => (s.grid[cellIndex(r, c)] = 2));
+    const res = placePiece(s, 0, 0, 0, seeded())!;
+    expect(res.surges).toEqual([{ idx: cellIndex(0, 4), kind: 'area' }]);
+    expect([cellIndex(1, 3), cellIndex(1, 4), cellIndex(1, 5)].map((k) => res.state.grid[k])).toEqual([-1, -1, -1]);
+    expect(res.state.grid[cellIndex(2, 4)]).toBe(2);
+    expect(res.state.grid[cellIndex(1, 6)]).toBe(2);
+    expect(res.gained).toBe(10 + 100 + 3 * 40);
+  });
+
+  it('chain into line cores and vice versa', () => {
+    const s = rowZeroBut(0);
+    s.cores[cellIndex(0, 4)] = 'area';
+    s.grid[cellIndex(1, 5)] = 3;
+    s.cores[cellIndex(1, 5)] = 'line';
+    s.grid[cellIndex(1, 0)] = 3;
+    s.grid[cellIndex(6, 5)] = 3;
+    const res = placePiece(s, 0, 0, 0, seeded())!;
+    expect(res.surges.map((x) => x.kind)).toEqual(['area', 'line']);
+    expect(res.state.grid[cellIndex(1, 0)]).toBe(-1);
+    expect(res.state.grid[cellIndex(6, 5)]).toBe(-1);
+    expect(res.state.cores.every((k) => k === null)).toBe(true);
+  });
+
+  it('can be placed as part of a piece and clamp at the board edge', () => {
+    const s = rowZeroBut(0);
+    s.tray[0] = { ...single(), core: 0, coreKind: 'area' };
+    s.grid[cellIndex(1, 0)] = 4;
+    s.grid[cellIndex(1, 1)] = 4;
+    s.grid[cellIndex(1, 2)] = 4;
+    const res = placePiece(s, 0, 0, 0, seeded())!;
+    expect(res.surges).toEqual([{ idx: cellIndex(0, 0), kind: 'area' }]);
+    expect(res.state.grid[cellIndex(1, 0)]).toBe(-1);
+    expect(res.state.grid[cellIndex(1, 1)]).toBe(-1);
+    expect(res.state.grid[cellIndex(1, 2)]).toBe(4);
+  });
+
+  it('cover 9 cells in the middle and 4 in a corner', () => {
+    expect(new Set(blastCells(cellIndex(3, 3), 'area')).size).toBe(9);
+    expect(new Set(blastCells(cellIndex(0, 0), 'area')).size).toBe(4);
+    expect(new Set(blastCells(cellIndex(3, 3), 'line')).size).toBe(2 * N - 1);
+  });
+
+  it('are dealt alongside line cores', () => {
+    const kinds = new Set<string>();
+    for (let seed = 1; seed <= 200; seed++) {
+      newTray(Array(N * N).fill(-1), seeded(seed)).forEach((p) => p.core >= 0 && kinds.add(p.coreKind));
+    }
+    expect([...kinds].sort()).toEqual(['area', 'line']);
   });
 });

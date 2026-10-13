@@ -76,6 +76,18 @@ function Ring({ fx }: { fx: Of<'ring'> }) {
   return <Animated.View style={[box(fx), styles.ring, { borderRadius: fx.w }, motion]} />;
 }
 
+function Blast({ fx }: { fx: Of<'blast'> }) {
+  const v = useProgress('blast', fx.delay);
+  const motion = useMemo(
+    () => ({
+      opacity: v.interpolate({ inputRange: [0, 0.25, 1], outputRange: [0, 0.95, 0] }),
+      transform: [{ scale: v.interpolate({ inputRange: [0, 0.25, 1], outputRange: [0.4, 1.05, 1.15] }) }],
+    }),
+    [v],
+  );
+  return <Animated.View style={[box(fx), styles.blast, motion]} />;
+}
+
 const TEXT_SIZE = { points: 0.07, combo: 0.06, praise: 0.11 };
 
 function Pop({ fx, m }: { fx: Of<'points' | 'combo' | 'praise'>; m: Metrics }) {
@@ -125,6 +137,8 @@ function FxItem({ fx, m }: { fx: FxSpec; m: Metrics }) {
       return <Trace fx={fx} />;
     case 'ring':
       return <Ring fx={fx} />;
+    case 'blast':
+      return <Blast fx={fx} />;
     default:
       return <Pop fx={fx} m={m} />;
   }
@@ -157,6 +171,16 @@ const styles = StyleSheet.create({
     shadowColor: C.surge,
     shadowOpacity: 1,
     shadowRadius: 12,
+    shadowOffset: { width: 0, height: 0 },
+  },
+  blast: {
+    borderRadius: 6,
+    borderWidth: 3,
+    borderColor: '#fff',
+    backgroundColor: 'rgba(255,194,244,0.55)',
+    shadowColor: C.surge,
+    shadowOpacity: 1,
+    shadowRadius: 14,
     shadowOffset: { width: 0, height: 0 },
   },
   pop: {

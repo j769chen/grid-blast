@@ -1,7 +1,7 @@
 import { memo, type Ref } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { N } from '../engine';
+import { N, type CoreKind } from '../engine';
 import { C, F, PART_COLORS, type Metrics } from '../theme';
 import type { FxSpec } from '../fx';
 import { FxLayer } from './Fx';
@@ -12,11 +12,12 @@ export interface Preview {
   hint: Set<number>;
   color: string;
   coreIdx: number;
+  coreKind: CoreKind;
 }
 
 interface BoardProps {
   grid: number[];
-  cores: boolean[];
+  cores: (CoreKind | null)[];
   preview: Preview | null;
   m: Metrics;
   fieldRef: Ref<View>;
@@ -36,17 +37,17 @@ export const Board = memo(function Board({ grid, cores, preview, m, fieldRef, on
     const r = Math.floor(i / N);
     const c = i % N;
     let color: string | null = null;
-    let core = false;
+    let core: CoreKind | null = null;
     let dim = false;
     let bright = false;
     if (preview?.hint.has(i)) {
       color = preview.color;
       bright = true;
-      core = cores[i] || i === preview.coreIdx;
+      core = cores[i] ?? (i === preview.coreIdx ? preview.coreKind : null);
     } else if (preview?.ghost.has(i)) {
       color = preview.color;
       dim = true;
-      core = i === preview.coreIdx;
+      core = i === preview.coreIdx ? preview.coreKind : null;
     } else if (grid[i] >= 0) {
       color = PART_COLORS[grid[i]];
       core = cores[i];

@@ -1,6 +1,7 @@
 import { memo, useEffect } from 'react';
 import { Animated, Easing, StyleSheet, View } from 'react-native';
 
+import type { CoreKind } from '../engine';
 import { C, NATIVE_DRIVER } from '../theme';
 
 const pulse = new Animated.Value(0);
@@ -29,17 +30,23 @@ function startPulse() {
   });
 }
 
-function Core({ size }: { size: number }) {
+function Core({ size, kind }: { size: number; kind: CoreKind }) {
   useEffect(startPulse, []);
   const box = size * 0.46;
   return (
-    <View style={[styles.core, { width: box, height: box, left: (size - box) / 2 - 1, top: (size - box) / 2 - 1 }]}>
+    <View
+      style={[
+        styles.core,
+        kind === 'area' && { borderRadius: box, borderColor: C.surge, borderWidth: 2 },
+        { width: box, height: box, left: (size - box) / 2 - 1, top: (size - box) / 2 - 1 },
+      ]}
+    >
       <Animated.View
         style={{
           width: box * 0.44,
           height: box * 0.44,
           borderRadius: box,
-          backgroundColor: '#fff',
+          backgroundColor: kind === 'area' ? C.surge : '#fff',
           opacity: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.65, 1] }),
           transform: [{ scale: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.85, 1.15] }) }],
         }}
@@ -53,20 +60,12 @@ interface LedProps {
   size: number;
   b: number;
   glow?: number;
-  core?: boolean;
+  core?: CoreKind | null;
   dim?: boolean;
   bright?: boolean;
 }
 
-export const Led = memo(function Led({
-  color,
-  size,
-  b,
-  glow = 0,
-  core = false,
-  dim = false,
-  bright = false,
-}: LedProps) {
+export const Led = memo(function Led({ color, size, b, glow = 0, core = null, dim = false, bright = false }: LedProps) {
   return (
     <View
       style={[
@@ -95,7 +94,7 @@ export const Led = memo(function Led({
         ]}
       />
       {bright && <View style={styles.bright} />}
-      {core && <Core size={size} />}
+      {core && <Core size={size} kind={core} />}
     </View>
   );
 });

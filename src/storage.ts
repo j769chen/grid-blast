@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { isGameState, type GameState } from './engine';
 
 const KEY = { game: 'overclock.game', best: 'overclock.best', haptics: 'overclock.haptics' };
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2;
 
 export interface SavedGame {
   game: GameState;
@@ -26,6 +26,18 @@ function read(key: string): Promise<string | null | typeof FAILED> {
   return AsyncStorage.getItem(key).catch(() => FAILED);
 }
 
+function fromV1(x: unknown): unknown {
+  if (!x || typeof x !== 'object') return x;
+  const g = x as Record<string, unknown>;
+  return {
+    ...g,
+    cores: Array.isArray(g.cores) ? g.cores.map((v) => (v === true ? 'line' : v === false ? null : v)) : g.cores,
+    tray: Array.isArray(g.tray)
+      ? g.tray.map((p) => (p && typeof p === 'object' && !('coreKind' in p) ? { ...p, coreKind: 'line' } : p))
+      : g.tray,
+  };
+}
+
 export function parseSave(raw: string | null): SavedGame | null {
   let data: unknown;
   try {
@@ -34,9 +46,13 @@ export function parseSave(raw: string | null): SavedGame | null {
     return null;
   }
   if (!data || typeof data !== 'object') return null;
-  if (!('v' in data)) return isGameState(data) ? { game: data, startBest: data.best } : null;
-  const { v, game, startBest } = data as { v: unknown; game: unknown; startBest: unknown };
-  if (v !== SAVE_VERSION || !isGameState(game)) return null;
+  if (!('v' in data)) {
+    const legacy = fromV1(data);
+    return isGameState(legacy) ? { game: legacy, startBest: legacy.best } : null;
+  }
+  const { v, game: stored, startBest } = data as { v: unknown; game: unknown; startBest: unknown };
+  const game = v === 1 ? fromV1(stored) : stored;
+  if ((v !== 1 && v !== SAVE_VERSION) || !isGameState(game)) return null;
   const start = typeof startBest === 'number' && startBest >= 0 && startBest <= game.best ? startBest : game.best;
   return { game, startBest: start };
 }

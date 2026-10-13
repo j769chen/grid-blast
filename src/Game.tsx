@@ -201,7 +201,8 @@ export default function Game() {
           onRotate={spin}
         />
         <Text style={[styles.note, { width: m.size }]}>
-          Rotate parts as often as you like. Cores blast their whole row and column.
+          Rotate parts as often as you like. Square cores blast their row and column; round cores blast the 3×3 around
+          them.
         </Text>
       </View>
       <GhostLayer tray={state.tray} m={m} drag={drag} />
