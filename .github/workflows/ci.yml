@@ -14,12 +14,14 @@ jobs:
     name: check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
+      - if: failure()
+        run: grep -vE ' (silly|http fetch|timing)' ~/.npm/_logs/*-debug-0.log | tail -60
       - run: npm run format:check
       - run: npm run typecheck
       - run: npm run lint
