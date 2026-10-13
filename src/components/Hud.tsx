@@ -1,5 +1,5 @@
 import { memo, useEffect, useRef, useState } from 'react';
-import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { fmt, MAX_CHARGE } from '../engine';
 import { C, F, type Metrics } from '../theme';
@@ -78,9 +78,11 @@ export const Hud = memo(function Hud({ score, best, charge, hapticsOn, armed, sh
         </Animated.View>
       </View>
       <View style={[styles.side, styles.tools]}>
-        <Pressable onPress={onToggleHaptics} accessibilityRole="button" accessibilityLabel={hapticsOn ? 'Turn vibration off' : 'Turn vibration on'} style={styles.btn}>
-          <VibrateIcon color={C.silk} off={!hapticsOn} />
-        </Pressable>
+        {Platform.OS !== 'web' && (
+          <Pressable onPress={onToggleHaptics} accessibilityRole="button" accessibilityLabel={hapticsOn ? 'Turn vibration off' : 'Turn vibration on'} style={styles.btn}>
+            <VibrateIcon color={C.silk} off={!hapticsOn} />
+          </Pressable>
+        )}
         <Pressable onPress={onRestart} accessibilityRole="button" accessibilityLabel="New game" style={[styles.btn, armed && styles.armed]}>
           {armed ? <Text style={styles.btnText}>Restart?</Text> : <RestartIcon color={C.silk} />}
         </Pressable>

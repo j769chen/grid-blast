@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
-import { Gesture } from 'react-native-gesture-handler';
+import { Gesture, PointerType } from 'react-native-gesture-handler';
 import { useAnimatedReaction, useSharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { scheduleOnRN } from 'react-native-worklets';
@@ -136,12 +136,13 @@ export default function Game() {
   const slots = useSharedValue([{ x: 0, y: 0 }, { x: 0, y: 0 }, { x: 0, y: 0 }]);
   const enabled = useSharedValue(false);
   const moved = useSharedValue(false);
+  const mouse = useSharedValue(false);
   const drop = useSharedValue({ seq: 0, slot: -1, code: NO_CELL });
   const pending = useSharedValue(-1);
   const pendingFrame = useSharedValue({ x: -9999, y: -9999 });
   const drag = useMemo<DragShared>(
-    () => ({ slot: dragSlot, touch, origin, pitch, geo, pending, pendingFrame }),
-    [dragSlot, touch, origin, pitch, geo, pending, pendingFrame],
+    () => ({ slot: dragSlot, touch, origin, pitch, mouse, geo, pending, pendingFrame }),
+    [dragSlot, touch, origin, pitch, mouse, geo, pending, pendingFrame],
   );
 
   useEffect(() => { mRef.current = m; }, [m]);
@@ -335,6 +336,7 @@ export default function Game() {
       touch.set(start);
       finger.set({ x: e.absoluteX, y: e.absoluteY });
       moved.set(false);
+      mouse.set(e.pointerType === PointerType.MOUSE);
       dragSlot.set(i);
     })
     .onUpdate((e) => {
@@ -354,7 +356,7 @@ export default function Game() {
       pending.set(i);
       dragSlot.set(-1);
       drop.set({ seq: drop.get().seq + 1, slot: i, code });
-    })), [slots, geo, enabled, dragSlot, origin, finger, touch, moved, drop, drag, field, grid, pending, pendingFrame]);
+    })), [slots, geo, enabled, dragSlot, origin, finger, touch, moved, mouse, drop, drag, field, grid, pending, pendingFrame]);
 
   const toggleHaptics = useCallback(() => {
     const next = !hapticsOn;

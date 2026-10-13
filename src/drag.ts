@@ -20,6 +20,7 @@ export interface DragShared {
   touch: SharedValue<{ x: number; y: number }>;
   origin: SharedValue<{ x: number; y: number }>;
   pitch: SharedValue<number>;
+  mouse: SharedValue<boolean>;
   geo: SharedValue<(SlotGeo | null)[]>;
   pending: SharedValue<number>;
   pendingFrame: SharedValue<{ x: number; y: number }>;
@@ -31,8 +32,10 @@ export function ghostFrame(d: DragShared, i: number) {
   if (!g) return { x: -9999, y: -9999 };
   const t = d.touch.get();
   const o = d.origin.get();
-  const cx = o.x + (t.x - o.x) * DRAG_GAIN;
-  const cy = o.y + (t.y - o.y) * DRAG_GAIN - d.pitch.get() * LIFT_CELLS;
+  const mouse = d.mouse.get();
+  const gain = mouse ? 1 : DRAG_GAIN;
+  const cx = o.x + (t.x - o.x) * gain;
+  const cy = o.y + (t.y - o.y) * gain - (mouse ? 0 : d.pitch.get() * LIFT_CELLS);
   return { x: cx - g.w / 2, y: cy - g.h / 2 };
 }
 

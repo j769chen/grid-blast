@@ -1,18 +1,17 @@
 # Overclock
 
-A block puzzle set on a circuit board, for the browser. No build step, no dependencies.
+A block puzzle set on a circuit board, for iOS, Android and the web. Built with Expo SDK 57 and React Native.
 
 ## Play
 
-Open `index.html` in a browser, or serve the folder:
-
 ```sh
-python3 -m http.server 8000
+npm install
+npx expo start
 ```
 
-Then visit http://localhost:8000.
-
-A React Native version lives in [`mobile/`](mobile/README.md).
+- Phone: install Expo Go from the App Store or Google Play, then scan the QR code with the camera (iOS) or Expo Go (Android).
+- Browser: press `w` in the Expo terminal, or run `npx expo start --web`.
+- Static web build: `npx expo export -p web` writes a self-contained site to `dist/`.
 
 ## Rules
 
@@ -41,4 +40,30 @@ A React Native version lives in [`mobile/`](mobile/README.md).
 - The combo grows with each clearing move and resets after 3 moves in a row without a clear.
 - Emptying the whole board adds 3,000.
 
-Peak score, the game in progress, and the sound setting are saved in `localStorage`.
+Peak score, the game in progress, and the vibration setting are saved on the device (AsyncStorage, which is `localStorage` on the web).
+
+## Dragging
+
+- Touch: the part floats about two cells above your finger and moves 1.4× as far, so your finger never hides the board.
+- Mouse: the part sits on the cursor and moves with it 1:1.
+- The shadow and the drop use the nearest open spot within one cell of the part.
+
+## Scripts
+
+```sh
+npm test            # unit tests (Jest)
+npm run lint        # ESLint via expo lint
+npm run typecheck   # tsc --noEmit
+```
+
+## Layout
+
+```
+App.tsx                 font loading, safe-area provider
+src/engine.ts           pure game logic: pieces, rotation, line clears, cores, scoring
+src/drag.ts             drag geometry and nearest-spot targeting
+src/Game.tsx            game screen: state, gestures, effects, persistence, haptics
+src/theme.ts            colors, fonts, board sizing
+src/components/         Board, Tray, Ghost, Hud, Fx, GameOver, Led, Background, Icons
+src/__tests__/          engine and drag tests
+```
