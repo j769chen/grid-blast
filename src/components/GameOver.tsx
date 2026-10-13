@@ -1,6 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { fmt } from '../engine';
+import { fmt } from '../format';
 import { C, F } from '../theme';
 
 interface GameOverProps {

@@ -3,8 +3,8 @@ import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-nativ
 import { GestureDetector, type PanGesture } from 'react-native-gesture-handler';
 import Reanimated, { useAnimatedStyle, type SharedValue } from 'react-native-reanimated';
 
-import { COLORS, turnsToFit, type Piece } from '../engine';
-import { C, F, type Metrics } from '../theme';
+import { turnsToFit, type Piece } from '../engine';
+import { C, F, PART_COLORS, type Metrics } from '../theme';
 import { RotateIcon } from './Icons';
 import { Led } from './Led';
 
@@ -48,7 +48,7 @@ function MiniPiece({ p, m, kind, index }: { p: Piece; m: Metrics; kind: SlotAnim
     >
       {p.cells.map(([r, c], k) => (
         <View key={k} style={{ position: 'absolute', left: c * step, top: r * step }}>
-          <Led color={COLORS[p.c]} size={m.mini} b={m.size * 0.0045} glow={m.size * 0.012} core={k === p.core} />
+          <Led color={PART_COLORS[p.c]} size={m.mini} b={m.size * 0.0045} glow={m.size * 0.012} core={k === p.core} />
         </View>
       ))}
     </Animated.View>

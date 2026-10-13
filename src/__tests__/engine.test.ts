@@ -1,7 +1,6 @@
 import { describe, expect, it } from '@jest/globals';
 
 import {
-  fmt,
   fits,
   isGameState,
   makePiece,
@@ -171,12 +170,5 @@ describe('newGame', () => {
     expect(s.best).toBe(1234);
     expect(s.grid.some((v) => v >= 0)).toBe(true);
     expect(s.tray).toHaveLength(3);
-  });
-});
-
-describe('fmt', () => {
-  it('adds thousands separators', () => {
-    expect(fmt(0)).toBe('0');
-    expect(fmt(1234567)).toBe('1,234,567');
   });
 });

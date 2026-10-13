@@ -61,10 +61,15 @@ npm run typecheck   # tsc --noEmit
 
 ```
 App.tsx                 font loading, safe-area provider
+src/Game.tsx            game screen: state transitions, timers, layout
 src/engine.ts           pure game logic: pieces, rotation, line clears, cores, scoring
-src/drag.ts             drag geometry and nearest-spot targeting
-src/Game.tsx            game screen: state, gestures, effects, persistence, haptics
+src/drag.ts             drag geometry and nearest-spot targeting (worklets)
+src/useDragGestures.ts  pan gestures, shared values, layout measuring, placement preview
+src/fx.ts               builds the line-clear effects for a placement
+src/storage.ts          saved game, peak score and vibration setting
+src/haptics.ts          vibration patterns
 src/theme.ts            colors, fonts, board sizing
+src/format.ts           number formatting
 src/components/         Board, Tray, Ghost, Hud, Fx, GameOver, Led, Background, Icons
-src/__tests__/          engine and drag tests
+src/__tests__/          unit tests
 ```

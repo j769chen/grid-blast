@@ -1,7 +1,8 @@
 import { memo, useEffect, useRef, useState } from 'react';
 import { Animated, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { fmt, MAX_CHARGE } from '../engine';
+import { MAX_CHARGE } from '../engine';
+import { fmt } from '../format';
 import { C, F, type Metrics } from '../theme';
 import { RestartIcon, VibrateIcon } from './Icons';
 

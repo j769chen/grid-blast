@@ -1,8 +1,8 @@
 import { memo, type Ref } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { COLORS, N } from '../engine';
-import { C, F, type Metrics } from '../theme';
+import { N } from '../engine';
+import { C, F, PART_COLORS, type Metrics } from '../theme';
 import { FxLayer, type FxSpec } from './Fx';
 import { Led, Pad } from './Led';
 
@@ -47,7 +47,7 @@ export const Board = memo(function Board({ grid, cores, preview, m, fieldRef, on
       dim = true;
       core = i === preview.coreIdx;
     } else if (grid[i] >= 0) {
-      color = COLORS[grid[i]];
+      color = PART_COLORS[grid[i]];
       core = cores[i];
     }
     cells.push(

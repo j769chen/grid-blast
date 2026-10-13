@@ -1,0 +1,234 @@
+import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
+import type { View } from 'react-native';
+import { Gesture, PointerType } from 'react-native-gesture-handler';
+import { useAnimatedReaction, useSharedValue } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
+
+import type { Preview } from './components/Board';
+import {
+  decodeCell,
+  ghostFrame,
+  NO_CELL,
+  OFFSCREEN,
+  targetCell,
+  type DragShared,
+  type Point,
+  type SlotGeo,
+} from './drag';
+import { fits, previewCells, TRAY_SIZE, type GameState, type Piece } from './engine';
+import type { Buzz } from './haptics';
+import { PART_COLORS, span, type Metrics } from './theme';
+
+const SLOTS = Array.from({ length: TRAY_SIZE }, (_, i) => i);
+
+interface Options {
+  state: GameState | null;
+  stateRef: RefObject<GameState | null>;
+  m: Metrics;
+  onPlace: (i: number, r: number, c: number) => void;
+  haptic: (kind: Buzz) => void;
+}
+
+export function useDragGestures({ state, stateRef, m, onPlace, haptic }: Options) {
+  const [preview, setPreview] = useState<Preview | null>(null);
+  const [released, setReleased] = useState({ seq: 0, slot: -1 });
+  const dragRef = useRef<{ i: number; p: Piece } | null>(null);
+  const rootRef = useRef<View>(null);
+  const fieldRef = useRef<View>(null);
+  const slotViews = useRef<(View | null)[]>([]);
+  const slotRefs = useMemo(
+    () =>
+      SLOTS.map((i) => (view: View | null) => {
+        slotViews.current[i] = view;
+      }),
+    [],
+  );
+
+  const dragSlot = useSharedValue(-1);
+  const touch = useSharedValue<Point>({ x: 0, y: 0 });
+  const origin = useSharedValue<Point>({ x: 0, y: 0 });
+  const finger = useSharedValue<Point>({ x: 0, y: 0 });
+  const pitch = useSharedValue(m.pitch);
+  const geo = useSharedValue<(SlotGeo | null)[]>(SLOTS.map(() => null));
+  const field = useSharedValue<Point>({ x: 0, y: 0 });
+  const grid = useSharedValue<number[]>([]);
+  const slots = useSharedValue<Point[]>(SLOTS.map(() => ({ x: 0, y: 0 })));
+  const enabled = useSharedValue(false);
+  const moved = useSharedValue(false);
+  const mouse = useSharedValue(false);
+  const drop = useSharedValue({ seq: 0, slot: -1, code: NO_CELL });
+  const pending = useSharedValue(-1);
+  const pendingFrame = useSharedValue<Point>({ x: OFFSCREEN, y: OFFSCREEN });
+  const drag = useMemo<DragShared>(
+    () => ({ slot: dragSlot, touch, origin, pitch, mouse, geo, pending, pendingFrame }),
+    [dragSlot, touch, origin, pitch, mouse, geo, pending, pendingFrame],
+  );
+
+  useEffect(() => {
+    geo.set(
+      (state?.tray ?? SLOTS.map(() => null)).map((p) =>
+        p ? { w: span(p.w, m), h: span(p.h, m), pw: p.w, ph: p.h, cells: p.cells.flat() } : null,
+      ),
+    );
+    grid.set(state?.grid ?? []);
+    pitch.set(m.pitch);
+    enabled.set(!!state && !state.over);
+  }, [state, m, geo, grid, pitch, enabled]);
+
+  useEffect(() => {
+    if (released.seq && pending.get() === released.slot) pending.set(-1);
+  }, [released, pending]);
+
+  const measureLayout = useCallback(() => {
+    const root = rootRef.current;
+    if (!root) return;
+    fieldRef.current?.measureLayout(root, (x, y) => field.set({ x, y }));
+    const next: (Point | null)[] = SLOTS.map(() => null);
+    slotViews.current.forEach((view, i) =>
+      view?.measureLayout(root, (x, y) => {
+        next[i] = { x, y };
+        if (next.every((v): v is Point => v !== null)) slots.set(next);
+      }),
+    );
+  }, [field, slots]);
+
+  useEffect(() => {
+    measureLayout();
+  });
+
+  const onDragStart = useCallback(
+    (i: number) => {
+      const p = stateRef.current?.tray[i];
+      if (!p) return;
+      dragRef.current = { i, p };
+      setPreview(null);
+      haptic('select');
+    },
+    [stateRef, haptic],
+  );
+
+  const onDragCell = useCallback(
+    (code: number) => {
+      const d = dragRef.current;
+      const s = stateRef.current;
+      if (!d || !s || code === NO_CELL) {
+        setPreview(null);
+        return;
+      }
+      const { r, c } = decodeCell(code);
+      if (!fits(s.grid, d.p, r, c)) {
+        setPreview(null);
+        return;
+      }
+      const pv = previewCells(s, d.p, r, c);
+      setPreview({
+        ghost: new Set(pv.ghost),
+        hint: new Set(pv.hint),
+        color: PART_COLORS[d.p.c],
+        coreIdx: pv.core,
+      });
+    },
+    [stateRef],
+  );
+
+  const onDragEnd = useCallback(
+    (i: number, code: number) => {
+      if (dragRef.current?.i === i) {
+        dragRef.current = null;
+        setPreview(null);
+      }
+      if (code !== NO_CELL) {
+        const { r, c } = decodeCell(code);
+        onPlace(i, r, c);
+      }
+      setReleased((v) => ({ seq: v.seq + 1, slot: i }));
+    },
+    [onPlace],
+  );
+
+  const isDragging = useCallback(() => dragRef.current !== null, []);
+
+  useAnimatedReaction(
+    () => dragSlot.get(),
+    (slot, prev) => {
+      if (slot >= 0 && slot !== prev) scheduleOnRN(onDragStart, slot);
+    },
+  );
+
+  useAnimatedReaction(
+    () => drop.get(),
+    (d, prev) => {
+      if (prev && d.seq !== prev.seq) scheduleOnRN(onDragEnd, d.slot, d.code);
+    },
+  );
+
+  useAnimatedReaction(
+    () => {
+      const i = dragSlot.get();
+      if (i < 0) return NO_CELL;
+      return targetCell(ghostFrame(drag, i), field.get(), pitch.get(), grid.get(), geo.get()[i]);
+    },
+    (code, prev) => {
+      if (code !== prev && dragSlot.get() >= 0) scheduleOnRN(onDragCell, code);
+    },
+  );
+
+  const gestures = useMemo(
+    () =>
+      SLOTS.map((i) =>
+        Gesture.Pan()
+          .minDistance(0)
+          .maxPointers(1)
+          .onBegin((e) => {
+            if (!enabled.get() || !geo.get()[i] || dragSlot.get() !== -1 || pending.get() === i) return;
+            const s = slots.get()[i];
+            const start = { x: s.x + e.x, y: s.y + e.y };
+            origin.set(start);
+            touch.set(start);
+            finger.set({ x: e.absoluteX, y: e.absoluteY });
+            moved.set(false);
+            mouse.set(e.pointerType === PointerType.MOUSE);
+            dragSlot.set(i);
+          })
+          .onUpdate((e) => {
+            if (dragSlot.get() !== i) return;
+            const o = origin.get();
+            const f0 = finger.get();
+            const dx = e.absoluteX - f0.x;
+            const dy = e.absoluteY - f0.y;
+            if (!moved.get() && Math.hypot(dx, dy) > 8) moved.set(true);
+            touch.set({ x: o.x + dx, y: o.y + dy });
+          })
+          .onFinalize((_e, success) => {
+            if (dragSlot.get() !== i) return;
+            const f = ghostFrame(drag, i);
+            const code =
+              success && moved.get() ? targetCell(f, field.get(), pitch.get(), grid.get(), geo.get()[i]) : NO_CELL;
+            pendingFrame.set(f);
+            pending.set(i);
+            dragSlot.set(-1);
+            drop.set({ seq: drop.get().seq + 1, slot: i, code });
+          }),
+      ),
+    [
+      slots,
+      geo,
+      enabled,
+      dragSlot,
+      origin,
+      finger,
+      touch,
+      moved,
+      mouse,
+      drop,
+      drag,
+      field,
+      pitch,
+      grid,
+      pending,
+      pendingFrame,
+    ],
+  );
+
+  return { rootRef, fieldRef, slotRefs, measureLayout, gestures, drag, dragSlot, pending, preview, isDragging };
+}

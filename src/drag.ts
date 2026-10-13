@@ -6,6 +6,12 @@ export const DRAG_GAIN = 1.4;
 export const LIFT_CELLS = 1.93;
 export const SNAP_RADIUS = 1;
 export const NO_CELL = -1;
+export const OFFSCREEN = -9999;
+
+export interface Point {
+  x: number;
+  y: number;
+}
 
 export interface SlotGeo {
   w: number;
@@ -17,19 +23,19 @@ export interface SlotGeo {
 
 export interface DragShared {
   slot: SharedValue<number>;
-  touch: SharedValue<{ x: number; y: number }>;
-  origin: SharedValue<{ x: number; y: number }>;
+  touch: SharedValue<Point>;
+  origin: SharedValue<Point>;
   pitch: SharedValue<number>;
   mouse: SharedValue<boolean>;
   geo: SharedValue<(SlotGeo | null)[]>;
   pending: SharedValue<number>;
-  pendingFrame: SharedValue<{ x: number; y: number }>;
+  pendingFrame: SharedValue<Point>;
 }
 
-export function ghostFrame(d: DragShared, i: number) {
+export function ghostFrame(d: DragShared, i: number): Point {
   'worklet';
   const g = d.geo.get()[i];
-  if (!g) return { x: -9999, y: -9999 };
+  if (!g) return { x: OFFSCREEN, y: OFFSCREEN };
   const t = d.touch.get();
   const o = d.origin.get();
   const mouse = d.mouse.get();
@@ -41,11 +47,11 @@ export function ghostFrame(d: DragShared, i: number) {
 
 export function encodeCell(r: number, c: number) {
   'worklet';
-  return (r + 50) * 100 + c + 50;
+  return r * N + c;
 }
 
 export function decodeCell(code: number) {
-  return { r: Math.floor(code / 100) - 50, c: (code % 100) - 50 };
+  return { r: Math.floor(code / N), c: code % N };
 }
 
 export function nearestCell(grid: number[], g: SlotGeo, fr: number, fc: number) {
@@ -69,4 +75,10 @@ export function nearestCell(grid: number[], g: SlotGeo, fr: number, fc: number) 
     }
   }
   return best;
+}
+
+export function targetCell(frame: Point, field: Point, pitch: number, grid: number[], g: SlotGeo | null) {
+  'worklet';
+  if (!g) return NO_CELL;
+  return nearestCell(grid, g, (frame.y - field.y) / pitch, (frame.x - field.x) / pitch);
 }

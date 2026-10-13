@@ -3,8 +3,8 @@ import { StyleSheet, View } from 'react-native';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 
 import { ghostFrame, type DragShared } from '../drag';
-import { COLORS, type Piece } from '../engine';
-import type { Metrics } from '../theme';
+import type { Piece } from '../engine';
+import { PART_COLORS, span, type Metrics } from '../theme';
 import { Led } from './Led';
 
 function GhostPiece({ p, i, m, drag }: { p: Piece; i: number; m: Metrics; drag: DragShared }) {
@@ -23,11 +23,11 @@ function GhostPiece({ p, i, m, drag }: { p: Piece; i: number; m: Metrics; drag: 
     <Animated.View
       testID={`ghost-${i}`}
       pointerEvents="none"
-      style={[styles.ghost, { width: p.w * m.pitch - m.gap, height: p.h * m.pitch - m.gap }, style]}
+      style={[styles.ghost, { width: span(p.w, m), height: span(p.h, m) }, style]}
     >
       {p.cells.map(([r, c], k) => (
         <View key={k} style={{ position: 'absolute', left: c * m.pitch, top: r * m.pitch }}>
-          <Led color={COLORS[p.c]} size={m.cell} b={m.b} glow={m.glow} core={k === p.core} />
+          <Led color={PART_COLORS[p.c]} size={m.cell} b={m.b} glow={m.glow} core={k === p.core} />
         </View>
       ))}
     </Animated.View>
