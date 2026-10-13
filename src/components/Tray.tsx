@@ -128,7 +128,10 @@ export const Tray = memo(function Tray({
                 disabled={!p}
                 accessibilityRole="button"
                 accessibilityLabel={`Rotate U${i + 1}`}
-                accessibilityState={{ disabled }}
+                accessibilityHint={charge < 1 ? 'No rotation charges left' : undefined}
+                accessibilityState={{ disabled: !p }}
+                accessibilityElementsHidden={!p}
+                importantForAccessibility={p ? 'auto' : 'no-hide-descendants'}
                 style={({ pressed }) => [
                   styles.rot,
                   ready && !disabled && styles.rotReady,

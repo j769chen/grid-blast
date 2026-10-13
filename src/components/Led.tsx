@@ -14,7 +14,9 @@ function startPulse() {
       Animated.timing(pulse, { toValue: 1, duration: 700, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
       Animated.timing(pulse, { toValue: 0, duration: 700, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
     ]),
-  ).start();
+  ).start(() => {
+    pulsing = false;
+  });
 }
 
 function Core({ size }: { size: number }) {

@@ -1,5 +1,5 @@
 import { memo, useEffect, useRef, useState } from 'react';
-import { Animated, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { MAX_CHARGE } from '../engine';
 import { fmt } from '../format';
@@ -66,7 +66,7 @@ export const Hud = memo(function Hud({
 
   return (
     <View style={[styles.hud, { width: m.size }]}>
-      <View style={styles.side}>
+      <View style={styles.side} accessible accessibilityLabel={`Peak score ${fmt(best)}`}>
         <Text style={styles.silk}>Peak</Text>
         <Text style={styles.best} numberOfLines={1} adjustsFontSizeToFit>
           {fmt(best)}
@@ -84,12 +84,13 @@ export const Hud = memo(function Hud({
           ]}
           numberOfLines={1}
           adjustsFontSizeToFit
-          accessibilityLiveRegion="polite"
+          accessibilityLabel={`Score ${fmt(score)}`}
         >
           {fmt(shown)}
         </Animated.Text>
         <Animated.View
           style={[styles.charge, { transform: [{ translateX: shake }] }]}
+          accessible
           accessibilityLabel={`Rotation charges: ${charge} of ${MAX_CHARGE}`}
         >
           <Text style={styles.silk}>Rot</Text>
@@ -101,16 +102,14 @@ export const Hud = memo(function Hud({
         </Animated.View>
       </View>
       <View style={[styles.side, styles.tools]}>
-        {Platform.OS !== 'web' && (
-          <Pressable
-            onPress={onToggleHaptics}
-            accessibilityRole="button"
-            accessibilityLabel={hapticsOn ? 'Turn vibration off' : 'Turn vibration on'}
-            style={styles.btn}
-          >
-            <VibrateIcon color={C.silk} off={!hapticsOn} />
-          </Pressable>
-        )}
+        <Pressable
+          onPress={onToggleHaptics}
+          accessibilityRole="button"
+          accessibilityLabel={hapticsOn ? 'Turn vibration off' : 'Turn vibration on'}
+          style={styles.btn}
+        >
+          <VibrateIcon color={C.silk} off={!hapticsOn} />
+        </Pressable>
         <Pressable
           onPress={onRestart}
           accessibilityRole="button"
