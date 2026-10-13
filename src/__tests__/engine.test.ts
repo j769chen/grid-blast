@@ -1,16 +1,22 @@
 import { describe, expect, it } from '@jest/globals';
 
 import {
+  anyMove,
+  cellIndex,
   fits,
   isGameState,
   makePiece,
   MAX_CHARGE,
   N,
   newGame,
+  newTray,
   placePiece,
+  previewCells,
   rotate,
   SHAPES,
   spinPiece,
+  START_CHARGE,
+  turnsToFit,
   type GameState,
   type Piece,
 } from '../engine';
@@ -27,6 +33,18 @@ function seeded(seed = 1) {
     return (s - 1) / 2147483646;
   };
 }
+
+function onlyOpen(open: [number, number][]) {
+  const grid = Array<number>(N * N).fill(0);
+  open.forEach(([r, c]) => (grid[cellIndex(r, c)] = -1));
+  return grid;
+}
+
+const column3: [number, number][] = [
+  [0, 0],
+  [1, 0],
+  [2, 0],
+];
 
 function blank(tray: (Piece | null)[], over: Partial<GameState> = {}): GameState {
   return {
@@ -214,5 +232,103 @@ describe('isGameState', () => {
     expect(isGameState(tweak((s) => ((s.tray as Piece[])[0].cells = [[9, 9]])))).toBe(false);
     expect(isGameState(tweak((s) => ((s.tray as Piece[])[0].core = 99)))).toBe(false);
     expect(isGameState(tweak((s) => (s.tray as unknown[]).pop()))).toBe(false);
+  });
+});
+
+describe('charges', () => {
+  it('starts a game with 3 charges', () => {
+    expect(newGame(0, seeded(3)).charge).toBe(START_CHARGE);
+    expect(START_CHARGE).toBe(3);
+  });
+
+  it('refunds one charge per clearing move and none otherwise', () => {
+    const s = blank([single(), single(), single()], { charge: 2 });
+    for (let c = 1; c < N; c++) s.grid[c] = 3;
+    const cleared = placePiece(s, 0, 0, 0, seeded())!.state;
+    expect(cleared.charge).toBe(3);
+    const idle = placePiece(cleared, 1, 5, 5, seeded())!.state;
+    expect(idle.charge).toBe(3);
+  });
+});
+
+describe('combo', () => {
+  it('survives two moves without a clear, and a clear resets the idle count', () => {
+    const s = blank([single(), single(), single()], { combo: 3, idle: 0 });
+    const one = placePiece(s, 0, 4, 4, seeded())!.state;
+    const two = placePiece(one, 1, 4, 6, seeded())!.state;
+    expect([one.combo, two.combo, two.idle]).toEqual([3, 3, 2]);
+    for (let c = 1; c < N; c++) two.grid[cellIndex(7, c)] = 1;
+    const res = placePiece(two, 2, 7, 0, seeded())!;
+    expect(res.state.combo).toBe(4);
+    expect(res.state.idle).toBe(0);
+    expect(res.gained).toBe(10 + 100 * 4);
+  });
+});
+
+describe('cores', () => {
+  it('detonates a core in a cleared column across its row', () => {
+    const s = blank([single(), single(), single()]);
+    for (let r = 1; r < N; r++) s.grid[cellIndex(r, 2)] = 0;
+    s.cores[cellIndex(4, 2)] = true;
+    s.grid[cellIndex(4, 6)] = 3;
+    s.grid[cellIndex(5, 6)] = 3;
+    const res = placePiece(s, 0, 0, 2, seeded())!;
+    expect(res.surges).toEqual([cellIndex(4, 2)]);
+    expect(res.state.grid[cellIndex(4, 6)]).toBe(-1);
+    expect(res.state.grid[cellIndex(5, 6)]).toBe(3);
+    expect(res.gained).toBe(10 + 100 + 40);
+  });
+});
+
+describe('dealing', () => {
+  it('does not deal while parts remain', () => {
+    const s = blank([single(), bar(2), null]);
+    const res = placePiece(s, 0, 0, 0, seeded())!;
+    expect(res.dealt).toBe(false);
+    expect(res.state.tray).toEqual([null, s.tray[1], null]);
+  });
+
+  it('always deals a set with a part that fits', () => {
+    const grid = onlyOpen([[3, 3]]);
+    for (let seed = 1; seed <= 25; seed++) {
+      const tray = newTray(grid, 0, seeded(seed));
+      expect(tray.some((p) => turnsToFit(grid, p, 0) === 0)).toBe(true);
+    }
+  });
+});
+
+describe('turnsToFit and game over', () => {
+  it('counts the rotations a part needs, capped by charges', () => {
+    const grid = onlyOpen(column3);
+    expect(turnsToFit(grid, rotate(bar(3)), 0)).toBe(0);
+    expect(turnsToFit(grid, bar(3), 1)).toBe(1);
+    expect(turnsToFit(grid, bar(3), 0)).toBe(-1);
+    expect(turnsToFit(grid, bar(4), 3)).toBe(-1);
+  });
+
+  it('is not over while an affordable rotation makes a part fit', () => {
+    const s = blank([bar(3), null, null], { grid: onlyOpen(column3), charge: 1 });
+    expect(anyMove(s)).toBe(true);
+    expect(anyMove({ ...s, charge: 0 })).toBe(false);
+  });
+
+  it('ends the game when a rotation spends the last charge on a part that no longer fits', () => {
+    const s = blank([rotate(bar(3)), null, null], { grid: onlyOpen(column3), charge: 1 });
+    const next = spinPiece(s, 0)!;
+    expect(next.charge).toBe(0);
+    expect(next.over).toBe(true);
+  });
+});
+
+describe('previewCells', () => {
+  it('lists the covered cells, the lines they would complete, and the core cell', () => {
+    const s = blank([single(), single(), single()]);
+    for (let c = 2; c < N; c++) s.grid[cellIndex(0, c)] = 1;
+    const p = { ...bar(2), core: 1 };
+    const pv = previewCells(s, p, 0, 0);
+    expect(pv.ghost).toEqual([cellIndex(0, 0), cellIndex(0, 1)]);
+    expect(pv.hint.sort((a, b) => a - b)).toEqual(Array.from({ length: N }, (_, c) => cellIndex(0, c)));
+    expect(pv.core).toBe(cellIndex(0, 1));
+    expect(previewCells(s, bar(2), 3, 3)).toMatchObject({ hint: [], core: -1 });
   });
 });

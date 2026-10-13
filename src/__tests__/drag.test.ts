@@ -1,6 +1,19 @@
 import { describe, expect, it } from '@jest/globals';
+import type { SharedValue } from 'react-native-reanimated';
 
-import { decodeCell, encodeCell, nearestCell, NO_CELL, type SlotGeo } from '../drag';
+import {
+  decodeCell,
+  DRAG_GAIN,
+  encodeCell,
+  ghostFrame,
+  LIFT_CELLS,
+  nearestCell,
+  NO_CELL,
+  targetCell,
+  type DragShared,
+  type Point,
+  type SlotGeo,
+} from '../drag';
 import { N } from '../engine';
 
 const empty = () => Array<number>(N * N).fill(-1);
@@ -32,5 +45,52 @@ describe('nearestCell', () => {
 
   it('round-trips cell codes', () => {
     expect(decodeCell(encodeCell(0, 7))).toEqual({ r: 0, c: 7 });
+  });
+});
+
+describe('nearestCell radius', () => {
+  it('uses Euclidean distance, so diagonal offsets beyond one cell miss', () => {
+    expect(nearestCell(empty(), square, -0.8, -0.8)).toBe(NO_CELL);
+    expect(at(nearestCell(empty(), square, -0.6, -0.6))).toEqual({ r: 0, c: 0 });
+    expect(at(nearestCell(empty(), square, -1, 0))).toEqual({ r: 0, c: 0 });
+  });
+});
+
+const sv = <T>(value: T) => ({ get: () => value }) as unknown as SharedValue<T>;
+
+function drag(touch: { x: number; y: number }, mouse: boolean): DragShared {
+  return {
+    slot: sv(0),
+    touch: sv(touch),
+    origin: sv({ x: 100, y: 500 }),
+    pitch: sv(40),
+    mouse: sv(mouse),
+    geo: sv<(SlotGeo | null)[]>([{ ...square, w: 78, h: 78 }, null, null]),
+    landing: sv<(Point | null)[]>([null, null, null]),
+  };
+}
+
+describe('ghostFrame', () => {
+  it('centres a touch-dragged part above the finger and moves it by the gain', () => {
+    const f = ghostFrame(drag({ x: 110, y: 480 }, false), 0);
+    expect(f.x + 39).toBeCloseTo(100 + 10 * DRAG_GAIN);
+    expect(f.y + 39).toBeCloseTo(500 - 20 * DRAG_GAIN - 40 * LIFT_CELLS);
+  });
+
+  it('keeps a mouse-dragged part on the cursor', () => {
+    const f = ghostFrame(drag({ x: 110, y: 480 }, true), 0);
+    expect(f).toEqual({ x: 110 - 39, y: 480 - 39 });
+  });
+
+  it('parks a slot with no part offscreen', () => {
+    expect(ghostFrame(drag({ x: 0, y: 0 }, false), 1).x).toBeLessThan(-1000);
+  });
+});
+
+describe('targetCell', () => {
+  it('converts the part frame to board cells', () => {
+    const field = { x: 20, y: 100 };
+    expect(at(targetCell({ x: 20 + 2.2 * 40, y: 100 + 3.4 * 40 }, field, 40, empty(), square))).toEqual({ r: 3, c: 2 });
+    expect(targetCell({ x: 0, y: 0 }, field, 40, empty(), null)).toBe(NO_CELL);
   });
 });
