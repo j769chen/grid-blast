@@ -1,9 +1,10 @@
+import { memo } from 'react';
 import { StyleSheet } from 'react-native';
 import Svg, { Circle, Defs, G, Path, Pattern, RadialGradient, Rect, Stop } from 'react-native-svg';
 
 import { C } from '../theme';
 
-export function Background() {
+export const Background = memo(function Background() {
   return (
     <Svg style={StyleSheet.absoluteFill} width="100%" height="100%">
       <Defs>
@@ -25,4 +26,4 @@ export function Background() {
       <Rect width="100%" height="100%" fill="url(#traces)" />
     </Svg>
   );
-}
+});

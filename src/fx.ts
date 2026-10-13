@@ -1,25 +1,61 @@
-import type { FxSpec } from './components/Fx';
 import { N, type PlaceResult } from './engine';
 import { fmt } from './format';
 import { PART_COLORS, type Metrics } from './theme';
 
 const PRAISE = ['', '', 'Double!', 'Triple!', 'Quad!', 'Overload!', 'Meltdown!'];
 
+interface Box {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  delay?: number;
+}
+
+interface Label {
+  x: number;
+  y: number;
+  text: string;
+}
+
+export type Fx =
+  | ({ kind: 'burst'; color: string } & Box)
+  | ({ kind: 'trace'; axis: 'h' | 'v'; surge: boolean } & Box)
+  | ({ kind: 'ring' } & Box)
+  | ({ kind: 'points' | 'combo' } & Label)
+  | ({ kind: 'praise'; surge: boolean } & Label);
+
+export type FxSpec = Fx & { id: number };
+
+export const FX_DURATION: Record<Fx['kind'], number> = {
+  burst: 500,
+  trace: 450,
+  ring: 600,
+  points: 900,
+  praise: 1100,
+  combo: 900,
+};
+export const FX_LIFETIME = 1700;
+
 let fxId = 0;
 
 export function buildFx(res: PlaceResult, m: Metrics): FxSpec[] {
   const items: FxSpec[] = [];
   if (!res.lineCount) return items;
-  const add = (it: Omit<FxSpec, 'id'>) => items.push({ ...it, id: ++fxId });
+  const add = (it: Fx) => items.push({ ...it, id: ++fxId });
 
-  res.lines.rows.forEach((r) => add({ kind: 'traceH', x: 0, y: r * m.pitch, w: m.field, h: m.cell }));
-  res.lines.cols.forEach((c) => add({ kind: 'traceV', x: c * m.pitch, y: 0, w: m.cell, h: m.field }));
+  res.lines.rows.forEach((r) =>
+    add({ kind: 'trace', axis: 'h', surge: false, x: 0, y: r * m.pitch, w: m.field, h: m.cell }),
+  );
+  res.lines.cols.forEach((c) =>
+    add({ kind: 'trace', axis: 'v', surge: false, x: c * m.pitch, y: 0, w: m.cell, h: m.field }),
+  );
   res.surges.forEach((k, n) => {
     const kr = Math.floor(k / N);
     const kc = k % N;
     const delay = 120 + n * 120;
-    add({ kind: 'traceH', x: 0, y: kr * m.pitch, w: m.field, h: m.cell, delay, surge: true });
-    add({ kind: 'traceV', x: kc * m.pitch, y: 0, w: m.cell, h: m.field, delay, surge: true });
+    add({ kind: 'trace', axis: 'h', surge: true, x: 0, y: kr * m.pitch, w: m.field, h: m.cell, delay });
+    add({ kind: 'trace', axis: 'v', surge: true, x: kc * m.pitch, y: 0, w: m.cell, h: m.field, delay });
     add({ kind: 'ring', x: kc * m.pitch, y: kr * m.pitch, w: m.cell, h: m.cell, delay });
   });
 

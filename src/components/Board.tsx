@@ -3,7 +3,8 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { N } from '../engine';
 import { C, F, PART_COLORS, type Metrics } from '../theme';
-import { FxLayer, type FxSpec } from './Fx';
+import type { FxSpec } from '../fx';
+import { FxLayer } from './Fx';
 import { Led, Pad } from './Led';
 
 export interface Preview {
