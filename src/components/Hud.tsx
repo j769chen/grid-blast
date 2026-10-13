@@ -1,7 +1,6 @@
 import { memo, useEffect, useRef, useState } from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { MAX_CHARGE } from '../engine';
 import { fmt } from '../format';
 import { C, F, NATIVE_DRIVER, type Metrics } from '../theme';
 import { RestartIcon, VibrateIcon } from './Icons';
@@ -9,10 +8,8 @@ import { RestartIcon, VibrateIcon } from './Icons';
 interface HudProps {
   score: number;
   best: number;
-  charge: number;
   hapticsOn: boolean;
   armed: boolean;
-  shakeKey: number;
   m: Metrics;
   onToggleHaptics: () => void;
   onRestart: () => void;
@@ -36,29 +33,9 @@ function useCountUp(target: number) {
   return shown;
 }
 
-export const Hud = memo(function Hud({
-  score,
-  best,
-  charge,
-  hapticsOn,
-  armed,
-  shakeKey,
-  m,
-  onToggleHaptics,
-  onRestart,
-}: HudProps) {
+export const Hud = memo(function Hud({ score, best, hapticsOn, armed, m, onToggleHaptics, onRestart }: HudProps) {
   const shown = useCountUp(score);
-  const [shake] = useState(() => new Animated.Value(0));
   const [bump] = useState(() => new Animated.Value(1));
-
-  useEffect(() => {
-    if (!shakeKey) return;
-    Animated.sequence(
-      [-5, 5, -3, 0].map((toValue) =>
-        Animated.timing(shake, { toValue, duration: 60, useNativeDriver: NATIVE_DRIVER }),
-      ),
-    ).start();
-  }, [shakeKey, shake]);
 
   useEffect(() => {
     if (!score) return;
@@ -90,18 +67,6 @@ export const Hud = memo(function Hud({
         >
           {fmt(shown)}
         </Animated.Text>
-        <Animated.View
-          style={[styles.charge, { transform: [{ translateX: shake }] }]}
-          accessible
-          accessibilityLabel={`Rotation charges: ${charge} of ${MAX_CHARGE}`}
-        >
-          <Text style={styles.silk}>Rot</Text>
-          <View style={styles.pips}>
-            {Array.from({ length: MAX_CHARGE }, (_, i) => (
-              <View key={i} style={[styles.pip, i < charge && styles.pipOn]} />
-            ))}
-          </View>
-        </Animated.View>
       </View>
       <View style={[styles.side, styles.tools]}>
         <Pressable
@@ -139,16 +104,6 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(255,226,161,0.35)',
     textShadowRadius: 18,
     textShadowOffset: { width: 0, height: 0 },
-  },
-  charge: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  pips: { flexDirection: 'row', gap: 3, padding: 2, borderWidth: 1, borderColor: C.silkDim, borderRadius: 3 },
-  pip: { width: 10, height: 8, borderRadius: 1, backgroundColor: 'rgba(238,242,230,0.12)' },
-  pipOn: {
-    backgroundColor: C.pad,
-    shadowColor: C.pad,
-    shadowOpacity: 0.8,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 0 },
   },
   btn: {
     height: 36,

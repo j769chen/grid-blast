@@ -16,7 +16,6 @@ function state(tray: (Piece | null)[], over: Partial<GameState> = {}): GameState
     best: 0,
     combo: 0,
     idle: 0,
-    charge: 3,
     over: false,
     ...over,
   };

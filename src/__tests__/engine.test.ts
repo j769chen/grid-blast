@@ -6,7 +6,6 @@ import {
   fits,
   isGameState,
   makePiece,
-  MAX_CHARGE,
   N,
   newGame,
   newTray,
@@ -15,7 +14,6 @@ import {
   rotate,
   SHAPES,
   spinPiece,
-  START_CHARGE,
   turnsToFit,
   type GameState,
   type Piece,
@@ -55,7 +53,6 @@ function blank(tray: (Piece | null)[], over: Partial<GameState> = {}): GameState
     best: 0,
     combo: 0,
     idle: 0,
-    charge: 3,
     over: false,
     ...over,
   };
@@ -114,15 +111,14 @@ describe('placePiece', () => {
     expect(res.state.tray[0]).toBeNull();
   });
 
-  it('clears a full row, refunds a charge, and applies the combo', () => {
-    const s = blank([single(), single(), single()], { combo: 1, charge: MAX_CHARGE });
+  it('clears a full row and applies the combo', () => {
+    const s = blank([single(), single(), single()], { combo: 1 });
     for (let c = 1; c < N; c++) s.grid[c] = 3;
     s.grid[N * 5] = 2;
     const res = placePiece(s, 0, 0, 0, seeded())!;
     expect(res.lineCount).toBe(1);
     expect(res.gained).toBe(10 + 100 * 2);
     expect(res.state.combo).toBe(2);
-    expect(res.state.charge).toBe(MAX_CHARGE);
     expect(res.state.grid.slice(0, N).every((v) => v < 0)).toBe(true);
     expect(res.perfect).toBe(false);
   });
@@ -163,8 +159,8 @@ describe('placePiece', () => {
     expect(res.state.tray.every((p) => p !== null)).toBe(true);
   });
 
-  it('ends the game when nothing fits, even after affordable rotations', () => {
-    const s = blank([single(), bar(5), null], { charge: 1 });
+  it('ends the game when nothing fits in any rotation', () => {
+    const s = blank([single(), bar(5), null]);
     for (let i = 0; i < N * N; i++) s.grid[i] = ((i % N) + Math.floor(i / N)) % 2 === 0 ? -1 : 1;
     const res = placePiece(s, 0, 0, 0, seeded())!;
     expect(res.state.over).toBe(true);
@@ -172,12 +168,18 @@ describe('placePiece', () => {
 });
 
 describe('spinPiece', () => {
-  it('rotates and spends a charge', () => {
-    const s = blank([bar(3), single(), single()], { charge: 1 });
-    const next = spinPiece(s, 0)!;
-    expect(next.charge).toBe(0);
-    expect(next.tray[0]!.h).toBe(3);
-    expect(spinPiece(next, 0)).toBeNull();
+  it('rotates as often as you like', () => {
+    let s = blank([bar(3), single(), single()]);
+    for (let turn = 1; turn <= 10; turn++) {
+      s = spinPiece(s, 0)!;
+      expect(s.tray[0]!.h).toBe(turn % 2 ? 3 : 1);
+    }
+    expect(s.score).toBe(0);
+  });
+
+  it('does nothing for an empty socket or a finished game', () => {
+    expect(spinPiece(blank([null, single(), single()]), 0)).toBeNull();
+    expect(spinPiece(blank([bar(3), null, null], { over: true }), 0)).toBeNull();
   });
 });
 
@@ -226,7 +228,6 @@ describe('isGameState', () => {
     expect(isGameState('{}')).toBe(false);
     expect(isGameState(tweak((s) => delete s.combo))).toBe(false);
     expect(isGameState(tweak((s) => (s.score = 'NaN')))).toBe(false);
-    expect(isGameState(tweak((s) => (s.charge = MAX_CHARGE + 1)))).toBe(false);
     expect(isGameState(tweak((s) => ((s.grid as number[])[0] = 99)))).toBe(false);
     expect(isGameState(tweak((s) => ((s.tray as Piece[])[0].cells = [1, 2] as unknown as Piece['cells'])))).toBe(false);
     expect(isGameState(tweak((s) => ((s.tray as Piece[])[0].cells = [[9, 9]])))).toBe(false);
@@ -235,19 +236,9 @@ describe('isGameState', () => {
   });
 });
 
-describe('charges', () => {
-  it('starts a game with 3 charges', () => {
-    expect(newGame(0, seeded(3)).charge).toBe(START_CHARGE);
-    expect(START_CHARGE).toBe(3);
-  });
-
-  it('refunds one charge per clearing move and none otherwise', () => {
-    const s = blank([single(), single(), single()], { charge: 2 });
-    for (let c = 1; c < N; c++) s.grid[c] = 3;
-    const cleared = placePiece(s, 0, 0, 0, seeded())!.state;
-    expect(cleared.charge).toBe(3);
-    const idle = placePiece(cleared, 1, 5, 5, seeded())!.state;
-    expect(idle.charge).toBe(3);
+describe('saves from the charge era', () => {
+  it('still load, ignoring the old charge count', () => {
+    expect(isGameState({ ...newGame(0, seeded(3)), charge: 2 })).toBe(true);
   });
 });
 
@@ -291,32 +282,31 @@ describe('dealing', () => {
   it('always deals a set with a part that fits', () => {
     const grid = onlyOpen([[3, 3]]);
     for (let seed = 1; seed <= 25; seed++) {
-      const tray = newTray(grid, 0, seeded(seed));
-      expect(tray.some((p) => turnsToFit(grid, p, 0) === 0)).toBe(true);
+      const tray = newTray(grid, seeded(seed));
+      expect(tray.some((p) => turnsToFit(grid, p) >= 0)).toBe(true);
     }
   });
 });
 
 describe('turnsToFit and game over', () => {
-  it('counts the rotations a part needs, capped by charges', () => {
+  it('counts the rotations a part needs to fit', () => {
     const grid = onlyOpen(column3);
-    expect(turnsToFit(grid, rotate(bar(3)), 0)).toBe(0);
-    expect(turnsToFit(grid, bar(3), 1)).toBe(1);
-    expect(turnsToFit(grid, bar(3), 0)).toBe(-1);
-    expect(turnsToFit(grid, bar(4), 3)).toBe(-1);
+    expect(turnsToFit(grid, rotate(bar(3)))).toBe(0);
+    expect(turnsToFit(grid, bar(3))).toBe(1);
+    expect(turnsToFit(grid, bar(4))).toBe(-1);
   });
 
-  it('is not over while an affordable rotation makes a part fit', () => {
-    const s = blank([bar(3), null, null], { grid: onlyOpen(column3), charge: 1 });
+  it('is not over while some rotation makes a part fit', () => {
+    const s = blank([bar(3), null, null], { grid: onlyOpen(column3) });
     expect(anyMove(s)).toBe(true);
-    expect(anyMove({ ...s, charge: 0 })).toBe(false);
+    expect(anyMove({ ...s, tray: [bar(4), null, null] })).toBe(false);
   });
 
-  it('ends the game when a rotation spends the last charge on a part that no longer fits', () => {
-    const s = blank([rotate(bar(3)), null, null], { grid: onlyOpen(column3), charge: 1 });
+  it('never ends the game by rotating', () => {
+    const s = blank([rotate(bar(3)), null, null], { grid: onlyOpen(column3) });
     const next = spinPiece(s, 0)!;
-    expect(next.charge).toBe(0);
-    expect(next.over).toBe(true);
+    expect(next.over).toBe(false);
+    expect(anyMove(next)).toBe(true);
   });
 });
 

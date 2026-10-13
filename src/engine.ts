@@ -1,8 +1,6 @@
 export const N = 8;
 export const TRAY_SIZE = 3;
 export const COLOR_COUNT = 7;
-export const MAX_CHARGE = 5;
-export const START_CHARGE = 3;
 export const CORE_CHANCE = 0.4;
 export const PTS = { cell: 10, line: 100, core: 40, perfect: 3000 };
 
@@ -27,7 +25,6 @@ export interface GameState {
   best: number;
   combo: number;
   idle: number;
-  charge: number;
   over: boolean;
 }
 
@@ -138,9 +135,9 @@ export function canPlace(grid: number[], p: Piece) {
   return false;
 }
 
-export function turnsToFit(grid: number[], p: Piece, maxTurns: number) {
+export function turnsToFit(grid: number[], p: Piece) {
   let q = p;
-  for (let k = 0; k <= Math.min(3, maxTurns); k++) {
+  for (let k = 0; k < 4; k++) {
     if (canPlace(grid, q)) return k;
     q = rotate(q);
   }
@@ -148,7 +145,7 @@ export function turnsToFit(grid: number[], p: Piece, maxTurns: number) {
 }
 
 export function anyMove(s: GameState) {
-  return s.tray.some((p) => p !== null && turnsToFit(s.grid, p, s.charge) >= 0);
+  return s.tray.some((p) => p !== null && turnsToFit(s.grid, p) >= 0);
 }
 
 export function fullLines(grid: number[]): Lines {
@@ -178,7 +175,7 @@ export function lineCells({ rows, cols }: Lines) {
   return set;
 }
 
-export function newTray(grid: number[], charge: number, rand: Rand = Math.random): Piece[] {
+export function newTray(grid: number[], rand: Rand = Math.random): Piece[] {
   for (let t = 0; t < 40; t++) {
     const colors = shuffle(
       Array.from({ length: COLOR_COUNT }, (_, k) => k),
@@ -192,7 +189,7 @@ export function newTray(grid: number[], charge: number, rand: Rand = Math.random
         p.core = Math.floor(rand() * p.cells.length);
       }
     }
-    if (tray.some((p) => turnsToFit(grid, p, charge) >= 0)) return tray;
+    if (tray.some((p) => turnsToFit(grid, p) >= 0)) return tray;
   }
   return Array.from({ length: TRAY_SIZE }, (_, i) => makePiece(0, i));
 }
@@ -223,23 +220,21 @@ export function newGame(best: number, rand: Rand = Math.random): GameState {
   return {
     grid,
     cores: Array(N * N).fill(false),
-    tray: newTray(grid, START_CHARGE, rand),
+    tray: newTray(grid, rand),
     score: 0,
     best,
     combo: 0,
     idle: 0,
-    charge: START_CHARGE,
     over: false,
   };
 }
 
 export function spinPiece(s: GameState, i: number): GameState | null {
   const p = s.tray[i];
-  if (s.over || !p || s.charge < 1) return null;
+  if (s.over || !p) return null;
   const tray = s.tray.slice();
   tray[i] = rotate(p);
-  const next = { ...s, tray, charge: s.charge - 1 };
-  return { ...next, over: !anyMove(next) };
+  return { ...s, tray };
 }
 
 export function placePiece(
@@ -261,7 +256,7 @@ export function placePiece(
   });
 
   let gained = p.cells.length * PTS.cell;
-  let { combo, idle, charge } = s;
+  let { combo, idle } = s;
   const lines = fullLines(grid);
   const lineCount = lines.rows.length + lines.cols.length;
   const lineSet = lineCells(lines);
@@ -291,7 +286,6 @@ export function placePiece(
     const extra = hit.size - lineSet.size;
     combo += 1;
     idle = 0;
-    charge = Math.min(MAX_CHARGE, charge + 1);
     gained += ((PTS.line * lineCount * (lineCount + 1)) / 2) * combo + extra * PTS.core;
     hit.forEach((k) => {
       cleared.push({ idx: k, color: grid[k] });
@@ -308,10 +302,10 @@ export function placePiece(
   let tray = s.tray.slice();
   tray[i] = null;
   const dealt = tray.every((x) => !x);
-  if (dealt) tray = newTray(grid, charge, rand);
+  if (dealt) tray = newTray(grid, rand);
 
   const score = s.score + gained;
-  const next: GameState = { grid, cores, tray, score, best: Math.max(s.best, score), combo, idle, charge, over: false };
+  const next: GameState = { grid, cores, tray, score, best: Math.max(s.best, score), combo, idle, over: false };
   next.over = !anyMove(next);
 
   return {
@@ -368,7 +362,6 @@ export function isGameState(x: unknown): x is GameState {
     isInt(g.best, 0, Number.MAX_SAFE_INTEGER) &&
     isInt(g.combo, 0, Number.MAX_SAFE_INTEGER) &&
     isInt(g.idle, 0, Number.MAX_SAFE_INTEGER) &&
-    isInt(g.charge, 0, MAX_CHARGE) &&
     typeof g.over === 'boolean'
   );
 }

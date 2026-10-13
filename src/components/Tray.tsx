@@ -74,7 +74,6 @@ function HideWhileDragged({
 interface TrayProps {
   tray: (Piece | null)[];
   grid: number[];
-  charge: number;
   m: Metrics;
   anims: SlotAnim[];
   gestures: PanGesture[];
@@ -88,7 +87,6 @@ interface TrayProps {
 export const Tray = memo(function Tray({
   tray,
   grid,
-  charge,
   m,
   anims,
   gestures,
@@ -98,7 +96,7 @@ export const Tray = memo(function Tray({
   landing,
   onRotate,
 }: TrayProps) {
-  const turns = tray.map((p) => (p ? turnsToFit(grid, p, charge) : -1));
+  const turns = tray.map((p) => (p ? turnsToFit(grid, p) : -1));
   return (
     <View onLayout={onTrayLayout} style={[styles.dock, { width: m.size }]}>
       <View style={[styles.row, { height: m.size * 0.34 }]}>
@@ -119,7 +117,6 @@ export const Tray = memo(function Tray({
       </View>
       <View style={styles.row}>
         {tray.map((p, i) => {
-          const disabled = !p || charge < 1;
           const ready = !!p && turns[i] > 0;
           return (
             <View key={i} style={styles.rotCell}>
@@ -128,18 +125,13 @@ export const Tray = memo(function Tray({
                 disabled={!p}
                 accessibilityRole="button"
                 accessibilityLabel={`Rotate U${i + 1}`}
-                accessibilityHint={charge < 1 ? 'No rotation charges left' : undefined}
                 accessibilityState={{ disabled: !p }}
                 accessibilityElementsHidden={!p}
                 importantForAccessibility={p ? 'auto' : 'no-hide-descendants'}
-                style={({ pressed }) => [
-                  styles.rot,
-                  ready && !disabled && styles.rotReady,
-                  { opacity: !p ? 0 : disabled ? 0.35 : pressed ? 0.7 : 1 },
-                ]}
+                style={({ pressed }) => [styles.rot, ready && styles.rotReady, { opacity: !p ? 0 : pressed ? 0.7 : 1 }]}
               >
-                <RotateIcon color={ready && !disabled ? C.pad : C.silk} />
-                <Text style={[styles.rotText, ready && !disabled && { color: C.pad }]}>Rotate</Text>
+                <RotateIcon color={ready ? C.pad : C.silk} />
+                <Text style={[styles.rotText, ready && { color: C.pad }]}>Rotate</Text>
               </Pressable>
             </View>
           );
