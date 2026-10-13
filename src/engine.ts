@@ -1,11 +1,14 @@
 export const N = 8;
+export const TRAY_SIZE = 3;
+export const COLOR_COUNT = 7;
 export const MAX_CHARGE = 5;
 export const START_CHARGE = 3;
 export const CORE_CHANCE = 0.4;
 export const PTS = { cell: 10, line: 100, core: 40, perfect: 3000 };
-export const COLORS = ['#ff4d5e', '#ffa62b', '#ffe14d', '#4da3ff', '#3fe0ff', '#ff5fd2', '#eef3ff'];
 
 export type Rand = () => number;
+
+export const cellIndex = (r: number, c: number) => r * N + c;
 export type Cell = [number, number];
 
 export interface Piece {
@@ -127,7 +130,7 @@ export function rotate(p: Piece): Piece {
 
 export function fits(grid: number[], p: Piece, r: number, c: number) {
   if (r < 0 || c < 0 || r + p.h > N || c + p.w > N) return false;
-  return p.cells.every(([dr, dc]) => grid[(r + dr) * N + c + dc] < 0);
+  return p.cells.every(([dr, dc]) => grid[cellIndex(r + dr, c + dc)] < 0);
 }
 
 export function canPlace(grid: number[], p: Piece) {
@@ -177,8 +180,11 @@ export function lineCells({ rows, cols }: Lines) {
 
 export function newTray(grid: number[], charge: number, rand: Rand = Math.random): Piece[] {
   for (let t = 0; t < 40; t++) {
-    const colors = shuffle([0, 1, 2, 3, 4, 5, 6], rand);
-    const tray = [0, 1, 2].map((i) => makePiece(pickShape(rand), colors[i]));
+    const colors = shuffle(
+      Array.from({ length: COLOR_COUNT }, (_, k) => k),
+      rand,
+    );
+    const tray = Array.from({ length: TRAY_SIZE }, (_, i) => makePiece(pickShape(rand), colors[i]));
     if (rand() < CORE_CHANCE) {
       const options = tray.filter((p) => p.cells.length > 1);
       if (options.length) {
@@ -188,21 +194,21 @@ export function newTray(grid: number[], charge: number, rand: Rand = Math.random
     }
     if (tray.some((p) => turnsToFit(grid, p, charge) >= 0)) return tray;
   }
-  return [0, 1, 2].map((i) => makePiece(0, i));
+  return Array.from({ length: TRAY_SIZE }, (_, i) => makePiece(0, i));
 }
 
 function seed(rand: Rand) {
   let grid: number[] = Array(N * N).fill(-1);
   let placed = 0;
   for (let tries = 0; tries < 200 && placed < 4; tries++) {
-    const p = makePiece(pickShape(rand), Math.floor(rand() * COLORS.length));
+    const p = makePiece(pickShape(rand), Math.floor(rand() * COLOR_COUNT));
     if (p.cells.length > 5) continue;
     const r = Math.floor(rand() * (N - p.h + 1));
     const c = Math.floor(rand() * (N - p.w + 1));
     if (!fits(grid, p, r, c)) continue;
     const g = grid.slice();
     p.cells.forEach(([dr, dc]) => {
-      g[(r + dr) * N + c + dc] = p.c;
+      g[cellIndex(r + dr, c + dc)] = p.c;
     });
     const lines = fullLines(g);
     if (lines.rows.length || lines.cols.length) continue;
@@ -249,7 +255,7 @@ export function placePiece(
   const grid = s.grid.slice();
   const cores = s.cores.slice();
   p.cells.forEach(([dr, dc], k) => {
-    const idx = (r + dr) * N + c + dc;
+    const idx = cellIndex(r + dr, c + dc);
     grid[idx] = p.c;
     if (k === p.core) cores[idx] = true;
   });
@@ -324,13 +330,11 @@ export function placePiece(
 
 export function previewCells(s: GameState, p: Piece, r: number, c: number) {
   const g = s.grid.slice();
-  const ghost: number[] = [];
-  p.cells.forEach(([dr, dc]) => {
-    const i = (r + dr) * N + c + dc;
+  const ghost = p.cells.map(([dr, dc]) => cellIndex(r + dr, c + dc));
+  ghost.forEach((i) => {
     g[i] = p.c;
-    ghost.push(i);
   });
-  return { ghost, hint: [...lineCells(fullLines(g))] };
+  return { ghost, hint: [...lineCells(fullLines(g))], core: p.core >= 0 ? ghost[p.core] : -1 };
 }
 
 export function isGameState(x: unknown): x is GameState {
@@ -342,11 +346,9 @@ export function isGameState(x: unknown): x is GameState {
     Array.isArray(g.cores) &&
     g.cores.length === N * N &&
     Array.isArray(g.tray) &&
-    g.tray.length === 3 &&
+    g.tray.length === TRAY_SIZE &&
     g.tray.every((p) => p === null || Array.isArray(p.cells)) &&
     typeof g.score === 'number' &&
     typeof g.charge === 'number'
   );
 }
-
-export const fmt = (n: number) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ',');

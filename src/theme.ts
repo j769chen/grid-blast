@@ -24,6 +24,8 @@ export const C = {
   scrim: 'rgba(3,20,13,0.72)',
 };
 
+export const PART_COLORS = ['#ff4d5e', '#ffa62b', '#ffe14d', '#4da3ff', '#3fe0ff', '#ff5fd2', '#eef3ff'];
+
 export const F = {
   medium: 'ChakraPetch_500Medium',
   semi: 'ChakraPetch_600SemiBold',
@@ -66,3 +68,5 @@ export function metrics(width: number, height: number): Metrics {
     glow: size * 0.02,
   };
 }
+
+export const span = (cells: number, m: Metrics) => cells * m.pitch - m.gap;
