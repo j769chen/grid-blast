@@ -18,14 +18,13 @@ npx expo start
 - A new game starts with a few parts already on the board.
 - Drag parts from the three sockets (U1–U3) onto the 8×8 board.
 - Fill a row or column to clear it. Rows and columns clear together.
-- When all three parts are placed, a new set is dealt. Every new set has at least one part that fits, counting rotations you can afford.
-- The game ends when no remaining part fits, counting rotations you can still afford.
+- When all three parts are placed, a new set is dealt. Every new set has at least one part that fits in some rotation.
+- The game ends when no remaining part fits in any rotation.
 
-## Rotation charges
+## Rotation
 
-- Press the Rotate button under a part to turn it 90° clockwise. Each rotation costs 1 charge.
-- You start with 3 charges and hold at most 5. Every move that clears a line refunds 1.
-- A glowing Rotate button means that part only fits after rotating. A greyed-out part can't fit with the charges you have.
+- Press the Rotate button under a part to turn it 90° clockwise. Rotations are free and unlimited.
+- A glowing Rotate button means that part only fits after rotating. A greyed-out part doesn't fit in any rotation.
 
 ## Cores
 

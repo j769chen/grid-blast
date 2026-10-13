@@ -32,7 +32,6 @@ export default function Game() {
     Array.from({ length: TRAY_SIZE }, () => ({ key: 0, kind: 'deal' as const })),
   );
   const [armed, setArmed] = useState(false);
-  const [shakeKey, setShakeKey] = useState(0);
 
   const stateRef = useRef<GameState | null>(null);
   const mRef = useRef(m);
@@ -133,11 +132,7 @@ export default function Game() {
       const s = stateRef.current;
       if (!s || s.over || !s.tray[i] || isDragging()) return;
       const next = spinPiece(s, i);
-      if (!next) {
-        setShakeKey((k) => k + 1);
-        haptic('warning');
-        return;
-      }
+      if (!next) return;
       commit(next);
       setAnims((a) => a.map((x, k) => (k === i ? { key: x.key + 1, kind: 'spin' } : x)));
       haptic('select');
@@ -178,10 +173,8 @@ export default function Game() {
         <Hud
           score={state.score}
           best={state.best}
-          charge={state.charge}
           hapticsOn={hapticsOn}
           armed={armed}
-          shakeKey={shakeKey}
           m={m}
           onToggleHaptics={toggleHaptics}
           onRestart={restart}
@@ -198,7 +191,6 @@ export default function Game() {
         <Tray
           tray={state.tray}
           grid={state.grid}
-          charge={state.charge}
           m={m}
           anims={anims}
           gestures={gestures}
@@ -209,7 +201,7 @@ export default function Game() {
           onRotate={spin}
         />
         <Text style={[styles.note, { width: m.size }]}>
-          Each rotation costs 1 charge. Clearing lines recharges. Cores blast their whole row and column.
+          Rotate parts as often as you like. Cores blast their whole row and column.
         </Text>
       </View>
       <GhostLayer tray={state.tray} m={m} drag={drag} />
