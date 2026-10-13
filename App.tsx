@@ -10,6 +10,7 @@ import { StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { ErrorBoundary } from './src/components/ErrorBoundary';
 import Game from './src/Game';
 import { C } from './src/theme';
 
@@ -25,7 +26,13 @@ export default function App() {
     <GestureHandlerRootView style={styles.root}>
       <SafeAreaProvider>
         <StatusBar style="light" />
-        {loaded || error ? <Game /> : <View style={styles.root} />}
+        {loaded || error ? (
+          <ErrorBoundary>
+            <Game />
+          </ErrorBoundary>
+        ) : (
+          <View style={styles.root} />
+        )}
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

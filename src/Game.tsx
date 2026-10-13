@@ -9,7 +9,7 @@ import { GameOver } from './components/GameOver';
 import { GhostLayer } from './components/Ghost';
 import { Hud } from './components/Hud';
 import { Tray, type SlotAnim } from './components/Tray';
-import { anyMove, isGameState, newGame, placePiece, spinPiece, TRAY_SIZE, type GameState } from './engine';
+import { anyMove, newGame, placePiece, spinPiece, TRAY_SIZE, type GameState } from './engine';
 import { buildFx } from './fx';
 import { buzz, type Buzz } from './haptics';
 import { loadSaved, saveGame, saveHaptics } from './storage';
@@ -51,7 +51,7 @@ export default function Game() {
   const commit = useCallback((next: GameState) => {
     stateRef.current = next;
     setState(next);
-    saveGame(next);
+    saveGame(next, startBest.current);
   }, []);
 
   const dealAll = useCallback(() => setAnims((a) => a.map((x) => ({ key: x.key + 1, kind: 'deal' }))), []);
@@ -69,17 +69,21 @@ export default function Game() {
 
   useEffect(() => {
     let alive = true;
-    loadSaved().then(({ game, best, haptics }) => {
-      if (!alive) return;
-      if (!haptics) setHapticsOn(false);
-      if (isGameState(game) && !game.over) {
-        const s = { ...game, best: Math.max(game.best, best) };
-        startBest.current = s.best;
-        commit({ ...s, over: !anyMove(s) });
-      } else {
-        startGame(best);
-      }
-    });
+    loadSaved()
+      .then(({ saved, best, haptics }) => {
+        if (!alive) return;
+        if (!haptics) setHapticsOn(false);
+        if (saved && !saved.game.over) {
+          const game = { ...saved.game, best: Math.max(saved.game.best, best) };
+          startBest.current = saved.startBest;
+          commit({ ...game, over: !anyMove(game) });
+        } else {
+          startGame(best);
+        }
+      })
+      .catch(() => {
+        if (alive) startGame(0);
+      });
     return () => {
       alive = false;
     };

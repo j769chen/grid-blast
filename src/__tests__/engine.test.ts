@@ -172,3 +172,47 @@ describe('newGame', () => {
     expect(s.tray).toHaveLength(3);
   });
 });
+
+describe('isGameState', () => {
+  const valid = () => newGame(0, seeded(7));
+  const tweak = (fn: (s: Record<string, unknown>) => void) => {
+    const s = JSON.parse(JSON.stringify(valid()));
+    fn(s);
+    return s;
+  };
+
+  it('accepts every state reached in play', () => {
+    const rand = seeded(11);
+    let s = valid();
+    for (let move = 0; move < 300; move++) {
+      if (s.over) s = newGame(s.best, rand);
+      const options: [number, number, number][] = [];
+      s.tray.forEach((p, i) => {
+        if (!p) return;
+        for (let r = 0; r <= N - p.h; r++)
+          for (let c = 0; c <= N - p.w; c++) if (fits(s.grid, p, r, c)) options.push([i, r, c]);
+      });
+      if (!options.length) {
+        const i = s.tray.findIndex((p) => p);
+        s = spinPiece(s, i) ?? newGame(s.best, rand);
+      } else {
+        const [i, r, c] = options[Math.floor(rand() * options.length)];
+        s = placePiece(s, i, r, c, rand)!.state;
+      }
+      expect(isGameState(JSON.parse(JSON.stringify(s)))).toBe(true);
+    }
+  });
+
+  it('rejects corrupt saves', () => {
+    expect(isGameState(null)).toBe(false);
+    expect(isGameState('{}')).toBe(false);
+    expect(isGameState(tweak((s) => delete s.combo))).toBe(false);
+    expect(isGameState(tweak((s) => (s.score = 'NaN')))).toBe(false);
+    expect(isGameState(tweak((s) => (s.charge = MAX_CHARGE + 1)))).toBe(false);
+    expect(isGameState(tweak((s) => ((s.grid as number[])[0] = 99)))).toBe(false);
+    expect(isGameState(tweak((s) => ((s.tray as Piece[])[0].cells = [1, 2] as unknown as Piece['cells'])))).toBe(false);
+    expect(isGameState(tweak((s) => ((s.tray as Piece[])[0].cells = [[9, 9]])))).toBe(false);
+    expect(isGameState(tweak((s) => ((s.tray as Piece[])[0].core = 99)))).toBe(false);
+    expect(isGameState(tweak((s) => (s.tray as unknown[]).pop()))).toBe(false);
+  });
+});
