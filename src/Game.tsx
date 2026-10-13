@@ -126,7 +126,7 @@ export default function Game() {
     [commit, dealAll, haptic],
   );
 
-  const { rootRef, fieldRef, slotRefs, measureLayout, gestures, drag, dragSlot, pending, preview, isDragging } =
+  const { rootRef, fieldRef, slotRefs, measureLayout, gestures, drag, dragSlot, landing, preview, isDragging } =
     useDragGestures({ state, stateRef, m, onPlace: place, haptic });
 
   const spin = useCallback(
@@ -193,7 +193,7 @@ export default function Game() {
           preview={preview}
           m={m}
           fieldRef={fieldRef}
-          onFieldLayout={measureLayout}
+          onBoardLayout={measureLayout}
           fx={fx}
         />
         <Tray
@@ -204,9 +204,9 @@ export default function Game() {
           anims={anims}
           gestures={gestures}
           slotRefs={slotRefs}
-          onSlotLayout={measureLayout}
+          onTrayLayout={measureLayout}
           dragSlot={dragSlot}
-          pending={pending}
+          landing={landing}
           onRotate={spin}
         />
         <Text style={[styles.note, { width: m.size }]}>

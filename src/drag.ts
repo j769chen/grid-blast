@@ -28,8 +28,7 @@ export interface DragShared {
   pitch: SharedValue<number>;
   mouse: SharedValue<boolean>;
   geo: SharedValue<(SlotGeo | null)[]>;
-  pending: SharedValue<number>;
-  pendingFrame: SharedValue<Point>;
+  landing: SharedValue<(Point | null)[]>;
 }
 
 export function ghostFrame(d: DragShared, i: number): Point {

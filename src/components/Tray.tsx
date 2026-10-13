@@ -3,6 +3,7 @@ import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-nativ
 import { GestureDetector, type PanGesture } from 'react-native-gesture-handler';
 import Reanimated, { useAnimatedStyle, type SharedValue } from 'react-native-reanimated';
 
+import type { Point } from '../drag';
 import { turnsToFit, type Piece } from '../engine';
 import { C, F, PART_COLORS, type Metrics } from '../theme';
 import { RotateIcon } from './Icons';
@@ -58,15 +59,15 @@ function MiniPiece({ p, m, kind, index }: { p: Piece; m: Metrics; kind: SlotAnim
 function HideWhileDragged({
   i,
   dragSlot,
-  pending,
+  landing,
   children,
 }: {
   i: number;
   dragSlot: SharedValue<number>;
-  pending: SharedValue<number>;
+  landing: SharedValue<(Point | null)[]>;
   children: ReactNode;
 }) {
-  const style = useAnimatedStyle(() => ({ opacity: dragSlot.get() === i || pending.get() === i ? 0 : 1 }));
+  const style = useAnimatedStyle(() => ({ opacity: dragSlot.get() === i || landing.get()[i] ? 0 : 1 }));
   return <Reanimated.View style={style}>{children}</Reanimated.View>;
 }
 
@@ -78,9 +79,9 @@ interface TrayProps {
   anims: SlotAnim[];
   gestures: PanGesture[];
   slotRefs: Ref<View>[];
-  onSlotLayout: () => void;
+  onTrayLayout: () => void;
   dragSlot: SharedValue<number>;
-  pending: SharedValue<number>;
+  landing: SharedValue<(Point | null)[]>;
   onRotate: (i: number) => void;
 }
 
@@ -92,21 +93,21 @@ export const Tray = memo(function Tray({
   anims,
   gestures,
   slotRefs,
-  onSlotLayout,
+  onTrayLayout,
   dragSlot,
-  pending,
+  landing,
   onRotate,
 }: TrayProps) {
   const turns = tray.map((p) => (p ? turnsToFit(grid, p, charge) : -1));
   return (
-    <View style={[styles.dock, { width: m.size }]}>
+    <View onLayout={onTrayLayout} style={[styles.dock, { width: m.size }]}>
       <View style={[styles.row, { height: m.size * 0.34 }]}>
         {tray.map((p, i) => (
           <GestureDetector key={i} gesture={gestures[i]}>
-            <View ref={slotRefs[i]} onLayout={onSlotLayout} style={styles.slot}>
+            <View ref={slotRefs[i]} style={styles.slot}>
               <Text style={styles.label}>U{i + 1}</Text>
               {p && (
-                <HideWhileDragged i={i} dragSlot={dragSlot} pending={pending}>
+                <HideWhileDragged i={i} dragSlot={dragSlot} landing={landing}>
                   <View style={{ opacity: turns[i] < 0 ? 0.3 : 1 }}>
                     <MiniPiece key={anims[i].key} p={p} m={m} kind={anims[i].kind} index={i} />
                   </View>
