@@ -12,6 +12,8 @@ python3 -m http.server 8000
 
 Then visit http://localhost:8000.
 
+A React Native version lives in [`mobile/`](mobile/README.md).
+
 ## Rules
 
 - Drag parts from the three sockets (U1–U3) onto the 8×8 board.
