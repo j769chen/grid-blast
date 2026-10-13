@@ -3,47 +3,68 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Grid Blast</title>
+<title>Overclock</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@700;800;900&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Share+Tech+Mono&display=swap">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <div class="app" id="app">
   <header class="hud">
-    <div class="best" title="Best score">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 8l4.5 3.5L12 5l4.5 6.5L21 8l-2 10H5L3 8z"/><rect x="5" y="19" width="14" height="2" rx="1" fill="currentColor"/></svg>
-      <span id="best">0</span>
+    <div class="stat">
+      <span class="silk">Peak</span>
+      <span class="num" id="best">0</span>
     </div>
-    <div class="score" id="score" aria-live="polite">0</div>
+    <div class="center">
+      <div class="score" id="score" aria-live="polite">0</div>
+      <div class="charge" id="charge" aria-label="Rotation charges">
+        <span class="silk">Rot</span>
+        <span class="pips" id="pips"></span>
+      </div>
+    </div>
     <div class="tools">
-      <button class="icon-btn" id="sound" type="button" aria-label="Sound on"></button>
+      <button class="icon-btn" id="sound" type="button" aria-label="Mute sound"></button>
       <button class="icon-btn" id="restart" type="button" aria-label="New game">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" d="M4 12a8 8 0 1 0 2.4-5.7M4 4v4h4"/></svg>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" d="M4 12a8 8 0 1 0 2.4-5.7M4 4v4h4"/></svg>
       </button>
     </div>
   </header>
 
-  <div class="board" id="board">
-    <div class="cells" id="cells"></div>
-    <div class="fx" id="fx"></div>
+  <div class="board">
+    <span class="corner silk">OC-1</span>
+    <div class="silk-cols silk" aria-hidden="true"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span></div>
+    <div class="silk-rows silk" aria-hidden="true"><span>A</span><span>B</span><span>C</span><span>D</span><span>E</span><span>F</span><span>G</span><span>H</span></div>
+    <div class="field">
+      <div class="cells" id="cells"></div>
+      <div class="fx" id="fx"></div>
+    </div>
   </div>
 
-  <div class="tray" id="tray" aria-label="Pieces">
-    <div class="slot" data-i="0"></div>
-    <div class="slot" data-i="1"></div>
-    <div class="slot" data-i="2"></div>
+  <div class="dock">
+    <div class="tray" id="tray" aria-label="Parts">
+      <div class="slot" data-i="0" data-label="U1"></div>
+      <div class="slot" data-i="1" data-label="U2"></div>
+      <div class="slot" data-i="2" data-label="U3"></div>
+    </div>
+    <div class="rots" id="rots">
+      <button class="rot" type="button" data-i="0" aria-label="Rotate U1"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" d="M20 12a8 8 0 1 1-2.4-5.7M20 4v4h-4"/></svg><span>Rotate</span></button>
+      <button class="rot" type="button" data-i="1" aria-label="Rotate U2"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" d="M20 12a8 8 0 1 1-2.4-5.7M20 4v4h-4"/></svg><span>Rotate</span></button>
+      <button class="rot" type="button" data-i="2" aria-label="Rotate U3"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" d="M20 12a8 8 0 1 1-2.4-5.7M20 4v4h-4"/></svg><span>Rotate</span></button>
+    </div>
   </div>
+
+  <p class="silk silk-note">Each rotation costs 1 charge. Clearing lines recharges. Cores blast their whole row and column.</p>
 
   <div class="ghost" id="ghost" hidden></div>
 
   <div class="over" id="over" hidden>
     <div class="card" role="dialog" aria-labelledby="overTitle">
-      <p class="eyebrow" id="overTitle">No room left</p>
+      <p class="silk" id="overTitle">Short circuit</p>
+      <p class="sub">No part fits the board.</p>
       <p class="final" id="final">0</p>
-      <p class="best-line">Best <span id="finalBest">0</span></p>
-      <p class="newbest" id="newBest" hidden>New best score!</p>
+      <p class="best-line">Peak <span id="finalBest">0</span></p>
+      <p class="newbest" id="newBest" hidden>New peak score!</p>
       <button class="btn" id="again" type="button">Play again</button>
     </div>
   </div>

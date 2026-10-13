@@ -1,6 +1,6 @@
-# Grid Blast
+# Overclock
 
-A Block Blast–style block puzzle that runs in the browser. No build step, no dependencies.
+A block puzzle set on a circuit board, for the browser. No build step, no dependencies.
 
 ## Play
 
@@ -14,16 +14,29 @@ Then visit http://localhost:8000.
 
 ## Rules
 
-- Drag pieces from the tray onto the 8×8 board.
+- Drag parts from the three sockets (U1–U3) onto the 8×8 board.
 - Fill a row or column to clear it. Rows and columns clear together.
-- When all three pieces are used, a new set is dealt.
-- The game ends when none of the remaining pieces fit.
+- When all three parts are placed, a new set is dealt.
+- The game ends when no remaining part fits, counting rotations you can still afford.
+
+## Rotation charges
+
+- Press the Rotate button under a part to turn it 90° clockwise. Each rotation costs 1 charge.
+- You start with 3 charges and hold at most 5. Every move that clears a line refunds 1.
+- A glowing Rotate button means that part only fits after rotating. A greyed-out part can't fit with the charges you have.
+
+## Cores
+
+- Some sets include a part with a glowing core cell.
+- When a cleared line contains a core, the core blasts its entire row and column too.
+- A core caught in that blast detonates as well, so cores can chain.
 
 ## Scoring
 
-- 1 point per block placed.
-- Clearing n lines in one move scores 5·n·(n+1) (10, 30, 60, 100…), multiplied by the current combo.
+- 10 points per cell placed.
+- Clearing n lines in one move scores 50·n·(n+1) (100, 300, 600, 1,000…), multiplied by the current combo.
+- Each extra cell destroyed by a core adds 40.
 - The combo grows with each clearing move and resets after 3 moves in a row without a clear.
-- Emptying the whole board adds 300.
+- Emptying the whole board adds 3,000.
 
-Best score, the game in progress, and the sound setting are saved in `localStorage`.
+Peak score, the game in progress, and the sound setting are saved in `localStorage`.
