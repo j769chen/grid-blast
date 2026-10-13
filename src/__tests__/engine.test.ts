@@ -16,7 +16,8 @@ import {
   type Piece,
 } from '../engine';
 
-const shapeIndex = (w: number, h: number, n: number) => SHAPES.findIndex((s) => s.w === w && s.h === h && s.cells.length === n);
+const shapeIndex = (w: number, h: number, n: number) =>
+  SHAPES.findIndex((s) => s.w === w && s.h === h && s.cells.length === n);
 const single = () => makePiece(0, 0);
 const bar = (len: number) => makePiece(shapeIndex(len, 1, len), 1);
 
@@ -45,11 +46,27 @@ function blank(tray: (Piece | null)[], over: Partial<GameState> = {}): GameState
 
 describe('rotate', () => {
   it('turns an L clockwise', () => {
-    const l: Piece = { w: 2, h: 3, cells: [[0, 0], [1, 0], [2, 0], [2, 1]], c: 0, core: 3 };
+    const l: Piece = {
+      w: 2,
+      h: 3,
+      cells: [
+        [0, 0],
+        [1, 0],
+        [2, 0],
+        [2, 1],
+      ],
+      c: 0,
+      core: 3,
+    };
     const r = rotate(l);
     expect(r.w).toBe(3);
     expect(r.h).toBe(2);
-    expect(r.cells).toEqual([[0, 2], [0, 1], [0, 0], [1, 0]]);
+    expect(r.cells).toEqual([
+      [0, 2],
+      [0, 1],
+      [0, 0],
+      [1, 0],
+    ]);
     expect(r.core).toBe(3);
   });
 

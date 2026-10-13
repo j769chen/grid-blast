@@ -35,7 +35,17 @@ function useCountUp(target: number) {
   return shown;
 }
 
-export const Hud = memo(function Hud({ score, best, charge, hapticsOn, armed, shakeKey, m, onToggleHaptics, onRestart }: HudProps) {
+export const Hud = memo(function Hud({
+  score,
+  best,
+  charge,
+  hapticsOn,
+  armed,
+  shakeKey,
+  m,
+  onToggleHaptics,
+  onRestart,
+}: HudProps) {
   const shown = useCountUp(score);
   const [shake] = useState(() => new Animated.Value(0));
   const [bump] = useState(() => new Animated.Value(1));
@@ -57,18 +67,30 @@ export const Hud = memo(function Hud({ score, best, charge, hapticsOn, armed, sh
     <View style={[styles.hud, { width: m.size }]}>
       <View style={styles.side}>
         <Text style={styles.silk}>Peak</Text>
-        <Text style={styles.best} numberOfLines={1} adjustsFontSizeToFit>{fmt(best)}</Text>
+        <Text style={styles.best} numberOfLines={1} adjustsFontSizeToFit>
+          {fmt(best)}
+        </Text>
       </View>
       <View style={styles.center}>
         <Animated.Text
-          style={[styles.score, { fontSize: Math.min(54, Math.max(38, m.size * 0.12)), maxWidth: m.size * 0.46, transform: [{ scale: bump }] }]}
+          style={[
+            styles.score,
+            {
+              fontSize: Math.min(54, Math.max(38, m.size * 0.12)),
+              maxWidth: m.size * 0.46,
+              transform: [{ scale: bump }],
+            },
+          ]}
           numberOfLines={1}
           adjustsFontSizeToFit
           accessibilityLiveRegion="polite"
         >
           {fmt(shown)}
         </Animated.Text>
-        <Animated.View style={[styles.charge, { transform: [{ translateX: shake }] }]} accessibilityLabel={`Rotation charges: ${charge} of ${MAX_CHARGE}`}>
+        <Animated.View
+          style={[styles.charge, { transform: [{ translateX: shake }] }]}
+          accessibilityLabel={`Rotation charges: ${charge} of ${MAX_CHARGE}`}
+        >
           <Text style={styles.silk}>Rot</Text>
           <View style={styles.pips}>
             {Array.from({ length: MAX_CHARGE }, (_, i) => (
@@ -79,11 +101,21 @@ export const Hud = memo(function Hud({ score, best, charge, hapticsOn, armed, sh
       </View>
       <View style={[styles.side, styles.tools]}>
         {Platform.OS !== 'web' && (
-          <Pressable onPress={onToggleHaptics} accessibilityRole="button" accessibilityLabel={hapticsOn ? 'Turn vibration off' : 'Turn vibration on'} style={styles.btn}>
+          <Pressable
+            onPress={onToggleHaptics}
+            accessibilityRole="button"
+            accessibilityLabel={hapticsOn ? 'Turn vibration off' : 'Turn vibration on'}
+            style={styles.btn}
+          >
             <VibrateIcon color={C.silk} off={!hapticsOn} />
           </Pressable>
         )}
-        <Pressable onPress={onRestart} accessibilityRole="button" accessibilityLabel="New game" style={[styles.btn, armed && styles.armed]}>
+        <Pressable
+          onPress={onRestart}
+          accessibilityRole="button"
+          accessibilityLabel="New game"
+          style={[styles.btn, armed && styles.armed]}
+        >
           {armed ? <Text style={styles.btnText}>Restart?</Text> : <RestartIcon color={C.silk} />}
         </Pressable>
       </View>
@@ -98,12 +130,35 @@ const styles = StyleSheet.create({
   center: { alignItems: 'center', gap: 6, paddingHorizontal: 6 },
   silk: { fontFamily: F.mono, fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', color: C.silkDim },
   best: { fontFamily: F.bold, fontSize: 20, color: C.pad, fontVariant: ['tabular-nums'] },
-  score: { fontFamily: F.bold, color: C.silk, fontVariant: ['tabular-nums'], textShadowColor: 'rgba(255,226,161,0.35)', textShadowRadius: 18, textShadowOffset: { width: 0, height: 0 } },
+  score: {
+    fontFamily: F.bold,
+    color: C.silk,
+    fontVariant: ['tabular-nums'],
+    textShadowColor: 'rgba(255,226,161,0.35)',
+    textShadowRadius: 18,
+    textShadowOffset: { width: 0, height: 0 },
+  },
   charge: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   pips: { flexDirection: 'row', gap: 3, padding: 2, borderWidth: 1, borderColor: C.silkDim, borderRadius: 3 },
   pip: { width: 10, height: 8, borderRadius: 1, backgroundColor: 'rgba(238,242,230,0.12)' },
-  pipOn: { backgroundColor: C.pad, shadowColor: C.pad, shadowOpacity: 0.8, shadowRadius: 4, shadowOffset: { width: 0, height: 0 } },
-  btn: { height: 36, minWidth: 36, paddingHorizontal: 8, borderRadius: 6, borderWidth: 1, borderColor: C.silkLine, backgroundColor: C.silkFill, alignItems: 'center', justifyContent: 'center' },
+  pipOn: {
+    backgroundColor: C.pad,
+    shadowColor: C.pad,
+    shadowOpacity: 0.8,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 0 },
+  },
+  btn: {
+    height: 36,
+    minWidth: 36,
+    paddingHorizontal: 8,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: C.silkLine,
+    backgroundColor: C.silkFill,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   armed: { backgroundColor: C.danger, borderColor: C.danger },
   btnText: { fontFamily: F.mono, fontSize: 12, letterSpacing: 1, textTransform: 'uppercase', color: C.silk },
 });
