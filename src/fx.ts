@@ -1,6 +1,6 @@
 import { N, type PlaceResult } from './engine';
 import { fmt } from './format';
-import { PART_COLORS, type Metrics } from './theme';
+import { PART_COLORS, span, type Metrics } from './theme';
 
 const PRAISE = ['', '', 'Double!', 'Triple!', 'Quad!', 'Overload!', 'Meltdown!'];
 
@@ -22,6 +22,7 @@ export type Fx =
   | ({ kind: 'burst'; color: string } & Box)
   | ({ kind: 'trace'; axis: 'h' | 'v'; surge: boolean } & Box)
   | ({ kind: 'ring' } & Box)
+  | ({ kind: 'blast' } & Box)
   | ({ kind: 'points' | 'combo' } & Label)
   | ({ kind: 'praise'; surge: boolean } & Label);
 
@@ -31,6 +32,7 @@ export const FX_DURATION: Record<Fx['kind'], number> = {
   burst: 500,
   trace: 450,
   ring: 600,
+  blast: 550,
   points: 900,
   praise: 1100,
   combo: 900,
@@ -50,12 +52,20 @@ export function buildFx(res: PlaceResult, m: Metrics): FxSpec[] {
   res.lines.cols.forEach((c) =>
     add({ kind: 'trace', axis: 'v', surge: false, x: c * m.pitch, y: 0, w: m.cell, h: m.field }),
   );
-  res.surges.forEach((k, n) => {
-    const kr = Math.floor(k / N);
-    const kc = k % N;
+  res.surges.forEach(({ idx, kind }, n) => {
+    const kr = Math.floor(idx / N);
+    const kc = idx % N;
     const delay = 120 + n * 120;
-    add({ kind: 'trace', axis: 'h', surge: true, x: 0, y: kr * m.pitch, w: m.field, h: m.cell, delay });
-    add({ kind: 'trace', axis: 'v', surge: true, x: kc * m.pitch, y: 0, w: m.cell, h: m.field, delay });
+    if (kind === 'line') {
+      add({ kind: 'trace', axis: 'h', surge: true, x: 0, y: kr * m.pitch, w: m.field, h: m.cell, delay });
+      add({ kind: 'trace', axis: 'v', surge: true, x: kc * m.pitch, y: 0, w: m.cell, h: m.field, delay });
+    } else {
+      const r0 = Math.max(0, kr - 1);
+      const c0 = Math.max(0, kc - 1);
+      const rows = Math.min(N - 1, kr + 1) - r0 + 1;
+      const cols = Math.min(N - 1, kc + 1) - c0 + 1;
+      add({ kind: 'blast', x: c0 * m.pitch, y: r0 * m.pitch, w: span(cols, m), h: span(rows, m), delay });
+    }
     add({ kind: 'ring', x: kc * m.pitch, y: kr * m.pitch, w: m.cell, h: m.cell, delay });
   });
 

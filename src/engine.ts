@@ -2,12 +2,14 @@ export const N = 8;
 export const TRAY_SIZE = 3;
 export const COLOR_COUNT = 7;
 export const CORE_CHANCE = 0.4;
+export const AREA_CHANCE = 0.5;
 export const PTS = { cell: 10, line: 100, core: 40, perfect: 3000 };
 
 export type Rand = () => number;
 
 export const cellIndex = (r: number, c: number) => r * N + c;
 export type Cell = [number, number];
+export type CoreKind = 'line' | 'area';
 
 export interface Piece {
   w: number;
@@ -15,11 +17,17 @@ export interface Piece {
   cells: Cell[];
   c: number;
   core: number;
+  coreKind: CoreKind;
+}
+
+export interface Surge {
+  idx: number;
+  kind: CoreKind;
 }
 
 export interface GameState {
   grid: number[];
-  cores: boolean[];
+  cores: (CoreKind | null)[];
   tray: (Piece | null)[];
   score: number;
   best: number;
@@ -40,7 +48,7 @@ export interface PlaceResult {
   lineCount: number;
   lineSet: Set<number>;
   cleared: { idx: number; color: number }[];
-  surges: number[];
+  surges: Surge[];
   perfect: boolean;
   dealt: boolean;
   center: { r: number; c: number };
@@ -118,7 +126,7 @@ function shuffle<T>(a: T[], rand: Rand) {
 
 export function makePiece(shape: number, color: number): Piece {
   const s = SHAPES[shape];
-  return { w: s.w, h: s.h, cells: s.cells.map(([r, c]) => [r, c]), c: color, core: -1 };
+  return { w: s.w, h: s.h, cells: s.cells.map(([r, c]) => [r, c]), c: color, core: -1, coreKind: 'line' };
 }
 
 export function rotate(p: Piece): Piece {
@@ -175,6 +183,20 @@ export function lineCells({ rows, cols }: Lines) {
   return set;
 }
 
+export function blastCells(k: number, kind: CoreKind) {
+  const r = Math.floor(k / N);
+  const c = k % N;
+  const out: number[] = [];
+  if (kind === 'line') {
+    for (let j = 0; j < N; j++) out.push(cellIndex(r, j), cellIndex(j, c));
+    return out;
+  }
+  for (let rr = Math.max(0, r - 1); rr <= Math.min(N - 1, r + 1); rr++) {
+    for (let cc = Math.max(0, c - 1); cc <= Math.min(N - 1, c + 1); cc++) out.push(cellIndex(rr, cc));
+  }
+  return out;
+}
+
 export function newTray(grid: number[], rand: Rand = Math.random): Piece[] {
   for (let t = 0; t < 40; t++) {
     const colors = shuffle(
@@ -187,6 +209,7 @@ export function newTray(grid: number[], rand: Rand = Math.random): Piece[] {
       if (options.length) {
         const p = options[Math.floor(rand() * options.length)];
         p.core = Math.floor(rand() * p.cells.length);
+        p.coreKind = rand() < AREA_CHANCE ? 'area' : 'line';
       }
     }
     if (tray.some((p) => turnsToFit(grid, p) >= 0)) return tray;
@@ -219,7 +242,7 @@ export function newGame(best: number, rand: Rand = Math.random): GameState {
   const grid = seed(rand);
   return {
     grid,
-    cores: Array(N * N).fill(false),
+    cores: Array(N * N).fill(null),
     tray: newTray(grid, rand),
     score: 0,
     best,
@@ -252,7 +275,7 @@ export function placePiece(
   p.cells.forEach(([dr, dc], k) => {
     const idx = cellIndex(r + dr, c + dc);
     grid[idx] = p.c;
-    if (k === p.core) cores[idx] = true;
+    if (k === p.core) cores[idx] = p.coreKind;
   });
 
   let gained = p.cells.length * PTS.cell;
@@ -260,7 +283,7 @@ export function placePiece(
   const lines = fullLines(grid);
   const lineCount = lines.rows.length + lines.cols.length;
   const lineSet = lineCells(lines);
-  const surges: number[] = [];
+  const surges: Surge[] = [];
   const cleared: { idx: number; color: number }[] = [];
   let perfect = false;
 
@@ -270,17 +293,14 @@ export function placePiece(
     const queue = [...hit].filter((k) => cores[k]);
     while (queue.length) {
       const k = queue.shift()!;
-      if (seen.has(k)) continue;
+      const kind = cores[k];
+      if (seen.has(k) || !kind) continue;
       seen.add(k);
-      surges.push(k);
-      const kr = Math.floor(k / N);
-      const kc = k % N;
-      for (let j = 0; j < N; j++) {
-        for (const x of [kr * N + j, j * N + kc]) {
-          if (grid[x] < 0 || hit.has(x)) continue;
-          hit.add(x);
-          if (cores[x]) queue.push(x);
-        }
+      surges.push({ idx: k, kind });
+      for (const x of blastCells(k, kind)) {
+        if (grid[x] < 0 || hit.has(x)) continue;
+        hit.add(x);
+        if (cores[x]) queue.push(x);
       }
     }
     const extra = hit.size - lineSet.size;
@@ -290,7 +310,7 @@ export function placePiece(
     hit.forEach((k) => {
       cleared.push({ idx: k, color: grid[k] });
       grid[k] = -1;
-      cores[k] = false;
+      cores[k] = null;
     });
     perfect = grid.every((v) => v < 0);
     if (perfect) gained += PTS.perfect;
@@ -334,6 +354,8 @@ export function previewCells(s: GameState, p: Piece, r: number, c: number) {
 const isInt = (v: unknown, lo: number, hi: number): v is number =>
   typeof v === 'number' && Number.isInteger(v) && v >= lo && v <= hi;
 
+const isCoreKind = (v: unknown): v is CoreKind => v === 'line' || v === 'area';
+
 function isPiece(x: unknown): x is Piece {
   if (!x || typeof x !== 'object') return false;
   const p = x as Record<string, unknown>;
@@ -341,7 +363,7 @@ function isPiece(x: unknown): x is Piece {
   const { w, h, cells } = p;
   if (!Array.isArray(cells) || !cells.length) return false;
   const ok = cells.every((cell) => Array.isArray(cell) && isInt(cell[0], 0, h - 1) && isInt(cell[1], 0, w - 1));
-  return ok && isInt(p.core, -1, cells.length - 1);
+  return ok && isInt(p.core, -1, cells.length - 1) && isCoreKind(p.coreKind);
 }
 
 export function isGameState(x: unknown): x is GameState {
@@ -354,7 +376,7 @@ export function isGameState(x: unknown): x is GameState {
     grid.every((v) => isInt(v, -1, COLOR_COUNT - 1)) &&
     Array.isArray(cores) &&
     cores.length === N * N &&
-    cores.every((v) => typeof v === 'boolean') &&
+    cores.every((v) => v === null || isCoreKind(v)) &&
     Array.isArray(tray) &&
     tray.length === TRAY_SIZE &&
     tray.every((p) => p === null || isPiece(p)) &&

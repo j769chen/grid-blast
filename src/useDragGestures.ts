@@ -124,6 +124,7 @@ export function useDragGestures({ state, stateRef, m, onPlace, haptic }: Options
         hint: new Set(pv.hint),
         color: PART_COLORS[d.p.c],
         coreIdx: pv.core,
+        coreKind: d.p.coreKind,
       });
     },
     [stateRef],

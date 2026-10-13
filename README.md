@@ -28,9 +28,11 @@ npx expo start
 
 ## Cores
 
-- Some sets include a part with a glowing core cell.
-- When a cleared line contains a core, the core blasts its entire row and column too.
-- A core caught in that blast detonates as well, so cores can chain.
+- Some sets include a part with a glowing core cell. Cores come in two kinds:
+  - **Line cores** (gold square frame) blast their entire row and column.
+  - **Area cores** (round, with a pink centre) blast the 3×3 square around them.
+- A core detonates when a cleared line contains it.
+- A core caught in another core's blast detonates as well, so cores of either kind can chain.
 
 ## Scoring
 

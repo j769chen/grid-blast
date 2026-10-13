@@ -35,6 +35,27 @@ describe('parseSave', () => {
   });
 });
 
+describe('version 1 saves', () => {
+  it('migrate boolean cores to line cores', () => {
+    const g = game();
+    const old = {
+      ...g,
+      cores: g.cores.map((_, k) => k === 9),
+      tray: g.tray.map((p) => {
+        if (!p) return p;
+        const { coreKind: _kind, ...rest } = p;
+        return rest;
+      }),
+    };
+    for (const raw of [JSON.stringify({ v: 1, game: old, startBest: 0 }), JSON.stringify(old)]) {
+      const parsed = parseSave(raw)!;
+      expect(parsed.game.cores[9]).toBe('line');
+      expect(parsed.game.cores.filter(Boolean)).toHaveLength(1);
+      expect(parsed.game.tray.every((p) => !p || p.coreKind === 'line')).toBe(true);
+    }
+  });
+});
+
 describe('loadSaved and saveGame', () => {
   it('writes a versioned game and only raises the stored best', async () => {
     await AsyncStorage.setItem('overclock.best', '500');

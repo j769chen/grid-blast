@@ -2,7 +2,7 @@ import { describe, expect, it } from '@jest/globals';
 
 import { cellIndex, makePiece, N, placePiece, type GameState, type Piece } from '../engine';
 import { buildFx } from '../fx';
-import { metrics } from '../theme';
+import { metrics, span } from '../theme';
 
 const m = metrics(390, 800);
 const single = () => makePiece(0, 0);
@@ -10,7 +10,7 @@ const single = () => makePiece(0, 0);
 function state(tray: (Piece | null)[], over: Partial<GameState> = {}): GameState {
   return {
     grid: Array(N * N).fill(-1),
-    cores: Array(N * N).fill(false),
+    cores: Array(N * N).fill(null),
     tray,
     score: 0,
     best: 0,
@@ -50,7 +50,7 @@ describe('buildFx', () => {
   it('headlines surges and board clears', () => {
     const surge = state([single(), single(), single()]);
     for (let c = 1; c < N; c++) surge.grid[c] = 1;
-    surge.cores[3] = true;
+    surge.cores[3] = 'line';
     surge.grid[cellIndex(5, 3)] = 2;
     surge.grid[cellIndex(6, 6)] = 2;
     expect(texts(surge, 0, 0)).toContain('praise:Surge!');
@@ -68,5 +68,16 @@ describe('buildFx', () => {
     expect(items.filter((it) => it.kind === 'trace' && it.axis === 'h')).toHaveLength(1);
     expect(items.filter((it) => it.kind === 'burst')).toHaveLength(N);
     expect(new Set(items.map((it) => it.id)).size).toBe(items.length);
+  });
+
+  it('draws a 3×3 blast square for an area core', () => {
+    const s = state([single(), single(), single()]);
+    for (let c = 1; c < N; c++) s.grid[c] = 1;
+    s.cores[4] = 'area';
+    s.grid[cellIndex(5, 5)] = 2;
+    const items = buildFx(placePiece(s, 0, 0, 0)!, m);
+    const blast = items.find((it) => it.kind === 'blast');
+    expect(blast).toMatchObject({ x: 3 * m.pitch, y: 0, w: span(3, m), h: span(2, m) });
+    expect(items.some((it) => it.kind === 'trace' && it.surge)).toBe(false);
   });
 });

@@ -24,7 +24,7 @@ function GhostPiece({ p, i, m, drag }: { p: Piece; i: number; m: Metrics; drag: 
     >
       {p.cells.map(([r, c], k) => (
         <View key={k} style={{ position: 'absolute', left: c * m.pitch, top: r * m.pitch }}>
-          <Led color={PART_COLORS[p.c]} size={m.cell} b={m.b} glow={m.glow} core={k === p.core} />
+          <Led color={PART_COLORS[p.c]} size={m.cell} b={m.b} glow={m.glow} core={k === p.core ? p.coreKind : null} />
         </View>
       ))}
     </Animated.View>

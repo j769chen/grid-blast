@@ -49,7 +49,13 @@ function MiniPiece({ p, m, kind, index }: { p: Piece; m: Metrics; kind: SlotAnim
     >
       {p.cells.map(([r, c], k) => (
         <View key={k} style={{ position: 'absolute', left: c * step, top: r * step }}>
-          <Led color={PART_COLORS[p.c]} size={m.mini} b={m.size * 0.0045} glow={m.size * 0.012} core={k === p.core} />
+          <Led
+            color={PART_COLORS[p.c]}
+            size={m.mini}
+            b={m.size * 0.0045}
+            glow={m.size * 0.012}
+            core={k === p.core ? p.coreKind : null}
+          />
         </View>
       ))}
     </Animated.View>
