@@ -46,19 +46,42 @@ interface LedProps {
   bright?: boolean;
 }
 
-export const Led = memo(function Led({ color, size, b, glow = 0, core = false, dim = false, bright = false }: LedProps) {
+export const Led = memo(function Led({
+  color,
+  size,
+  b,
+  glow = 0,
+  core = false,
+  dim = false,
+  bright = false,
+}: LedProps) {
   return (
     <View
       style={[
         styles.led,
         { width: size, height: size, backgroundColor: color, opacity: dim ? 0.45 : 1 },
-        glow > 0 && { shadowColor: color, shadowOpacity: 0.7, shadowRadius: glow, shadowOffset: { width: 0, height: 0 } },
+        glow > 0 && {
+          shadowColor: color,
+          shadowOpacity: 0.7,
+          shadowRadius: glow,
+          shadowOffset: { width: 0, height: 0 },
+        },
       ]}
     >
       <View style={[styles.shade, { height: b * 1.3 }]} />
       <View style={[styles.shine, { height: b }]} />
-      <View style={[styles.halo, { width: size * 0.6, height: size * 0.6, borderRadius: size, left: size * 0.2 - 1, top: size * 0.14 - 1 }]} />
-      <View style={[styles.spot, { width: size * 0.2, height: size * 0.2, borderRadius: size, left: size * 0.4 - 1, top: size * 0.34 - 1 }]} />
+      <View
+        style={[
+          styles.halo,
+          { width: size * 0.6, height: size * 0.6, borderRadius: size, left: size * 0.2 - 1, top: size * 0.14 - 1 },
+        ]}
+      />
+      <View
+        style={[
+          styles.spot,
+          { width: size * 0.2, height: size * 0.2, borderRadius: size, left: size * 0.4 - 1, top: size * 0.34 - 1 },
+        ]}
+      />
       {bright && <View style={styles.bright} />}
       {core && <Core size={size} />}
     </View>
@@ -69,18 +92,50 @@ export const Pad = memo(function Pad({ size }: { size: number }) {
   const hole = size * 0.38;
   return (
     <View style={[styles.pad, { width: size, height: size }]}>
-      <View style={{ width: hole, height: hole, borderRadius: hole, borderWidth: Math.max(1, size * 0.04), borderColor: C.padRing, backgroundColor: C.maskDark }} />
+      <View
+        style={{
+          width: hole,
+          height: hole,
+          borderRadius: hole,
+          borderWidth: Math.max(1, size * 0.04),
+          borderColor: C.padRing,
+          backgroundColor: C.maskDark,
+        }}
+      />
     </View>
   );
 });
 
 const styles = StyleSheet.create({
   led: { borderRadius: 3, borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)' },
-  shade: { position: 'absolute', left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.28)', borderBottomLeftRadius: 2, borderBottomRightRadius: 2 },
+  shade: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.28)',
+    borderBottomLeftRadius: 2,
+    borderBottomRightRadius: 2,
+  },
   shine: { position: 'absolute', left: 0, right: 0, top: 0, backgroundColor: 'rgba(255,255,255,0.3)' },
   halo: { position: 'absolute', backgroundColor: 'rgba(255,255,255,0.2)' },
   spot: { position: 'absolute', backgroundColor: 'rgba(255,255,255,0.85)' },
   bright: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(255,255,255,0.18)' },
-  core: { position: 'absolute', alignItems: 'center', justifyContent: 'center', borderRadius: 2, borderWidth: 1, borderColor: C.pad, backgroundColor: C.ink },
-  pad: { borderRadius: 3, borderWidth: 1, borderColor: C.padEdge, backgroundColor: C.padFaint, alignItems: 'center', justifyContent: 'center' },
+  core: {
+    position: 'absolute',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 2,
+    borderWidth: 1,
+    borderColor: C.pad,
+    backgroundColor: C.ink,
+  },
+  pad: {
+    borderRadius: 3,
+    borderWidth: 1,
+    borderColor: C.padEdge,
+    backgroundColor: C.padFaint,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 });

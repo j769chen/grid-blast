@@ -18,10 +18,16 @@ export function GameOver({ visible, score, best, newBest, onAgain }: GameOverPro
       <View style={styles.card} accessibilityViewIsModal>
         <Text style={styles.eyebrow}>Short circuit</Text>
         <Text style={styles.sub}>No part fits the board.</Text>
-        <Text style={styles.final} numberOfLines={1} adjustsFontSizeToFit>{fmt(score)}</Text>
+        <Text style={styles.final} numberOfLines={1} adjustsFontSizeToFit>
+          {fmt(score)}
+        </Text>
         <Text style={styles.best}>Peak {fmt(best)}</Text>
         {newBest && <Text style={styles.newBest}>New peak score!</Text>}
-        <Pressable onPress={onAgain} accessibilityRole="button" style={({ pressed }) => [styles.btn, pressed && { transform: [{ translateY: 2 }] }]}>
+        <Pressable
+          onPress={onAgain}
+          accessibilityRole="button"
+          style={({ pressed }) => [styles.btn, pressed && { transform: [{ translateY: 2 }] }]}
+        >
           <Text style={styles.btnText}>Play again</Text>
         </Pressable>
       </View>
@@ -30,8 +36,26 @@ export function GameOver({ visible, score, best, newBest, onAgain }: GameOverPro
 }
 
 const styles = StyleSheet.create({
-  scrim: { ...StyleSheet.absoluteFill, backgroundColor: C.scrim, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
-  card: { width: '100%', maxWidth: 340, paddingTop: 26, paddingBottom: 24, paddingHorizontal: 24, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(212,173,98,0.55)', backgroundColor: C.maskDark, alignItems: 'center', gap: 6 },
+  scrim: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: C.scrim,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+  },
+  card: {
+    width: '100%',
+    maxWidth: 340,
+    paddingTop: 26,
+    paddingBottom: 24,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(212,173,98,0.55)',
+    backgroundColor: C.maskDark,
+    alignItems: 'center',
+    gap: 6,
+  },
   eyebrow: { fontFamily: F.mono, fontSize: 12, letterSpacing: 1.7, textTransform: 'uppercase', color: C.silkDim },
   sub: { fontFamily: F.medium, fontSize: 15, color: C.silkDim },
   final: { marginTop: 6, fontFamily: F.bold, fontSize: 56, color: C.silk, fontVariant: ['tabular-nums'] },

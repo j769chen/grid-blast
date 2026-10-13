@@ -26,12 +26,26 @@ function MiniPiece({ p, m, kind, index }: { p: Piece; m: Metrics; kind: SlotAnim
   }, [v, kind, index]);
 
   const step = m.mini + m.miniGap;
-  const transform = kind === 'deal'
-    ? [{ translateY: v.interpolate({ inputRange: [0, 1], outputRange: [24, 0] }) }, { scale: v.interpolate({ inputRange: [0, 1], outputRange: [0.6, 1] }) }]
-    : [{ rotate: v.interpolate({ inputRange: [0, 1], outputRange: ['-90deg', '0deg'] }) }, { scale: v.interpolate({ inputRange: [0, 1], outputRange: [0.85, 1] }) }];
+  const transform =
+    kind === 'deal'
+      ? [
+          { translateY: v.interpolate({ inputRange: [0, 1], outputRange: [24, 0] }) },
+          { scale: v.interpolate({ inputRange: [0, 1], outputRange: [0.6, 1] }) },
+        ]
+      : [
+          { rotate: v.interpolate({ inputRange: [0, 1], outputRange: ['-90deg', '0deg'] }) },
+          { scale: v.interpolate({ inputRange: [0, 1], outputRange: [0.85, 1] }) },
+        ];
 
   return (
-    <Animated.View style={{ width: p.w * step - m.miniGap, height: p.h * step - m.miniGap, opacity: kind === 'deal' ? v : 1, transform }}>
+    <Animated.View
+      style={{
+        width: p.w * step - m.miniGap,
+        height: p.h * step - m.miniGap,
+        opacity: kind === 'deal' ? v : 1,
+        transform,
+      }}
+    >
       {p.cells.map(([r, c], k) => (
         <View key={k} style={{ position: 'absolute', left: c * step, top: r * step }}>
           <Led color={COLORS[p.c]} size={m.mini} b={m.size * 0.0045} glow={m.size * 0.012} core={k === p.core} />
@@ -41,7 +55,17 @@ function MiniPiece({ p, m, kind, index }: { p: Piece; m: Metrics; kind: SlotAnim
   );
 }
 
-function HideWhileDragged({ i, dragSlot, pending, children }: { i: number; dragSlot: SharedValue<number>; pending: SharedValue<number>; children: ReactNode }) {
+function HideWhileDragged({
+  i,
+  dragSlot,
+  pending,
+  children,
+}: {
+  i: number;
+  dragSlot: SharedValue<number>;
+  pending: SharedValue<number>;
+  children: ReactNode;
+}) {
   const style = useAnimatedStyle(() => ({ opacity: dragSlot.get() === i || pending.get() === i ? 0 : 1 }));
   return <Reanimated.View style={style}>{children}</Reanimated.View>;
 }
@@ -60,7 +84,19 @@ interface TrayProps {
   onRotate: (i: number) => void;
 }
 
-export const Tray = memo(function Tray({ tray, grid, charge, m, anims, gestures, slotRefs, onSlotLayout, dragSlot, pending, onRotate }: TrayProps) {
+export const Tray = memo(function Tray({
+  tray,
+  grid,
+  charge,
+  m,
+  anims,
+  gestures,
+  slotRefs,
+  onSlotLayout,
+  dragSlot,
+  pending,
+  onRotate,
+}: TrayProps) {
   const turns = tray.map((p) => (p ? turnsToFit(grid, p, charge) : -1));
   return (
     <View style={[styles.dock, { width: m.size }]}>
@@ -112,10 +148,42 @@ export const Tray = memo(function Tray({ tray, grid, charge, m, anims, gestures,
 const styles = StyleSheet.create({
   dock: { gap: 6 },
   row: { flexDirection: 'row', gap: 8 },
-  slot: { flex: 1, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderStyle: 'dashed', borderColor: C.silkLine, borderRadius: 6 },
-  label: { position: 'absolute', top: 4, left: 6, fontFamily: F.mono, fontSize: 10, letterSpacing: 1, color: C.silkDim },
+  slot: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: C.silkLine,
+    borderRadius: 6,
+  },
+  label: {
+    position: 'absolute',
+    top: 4,
+    left: 6,
+    fontFamily: F.mono,
+    fontSize: 10,
+    letterSpacing: 1,
+    color: C.silkDim,
+  },
   rotCell: { flex: 1, alignItems: 'center' },
-  rot: { height: 34, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 6, borderWidth: 1, borderColor: 'rgba(238,242,230,0.25)', backgroundColor: C.silkFill },
-  rotReady: { borderColor: C.pad, shadowColor: C.pad, shadowOpacity: 0.6, shadowRadius: 8, shadowOffset: { width: 0, height: 0 } },
+  rot: {
+    height: 34,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(238,242,230,0.25)',
+    backgroundColor: C.silkFill,
+  },
+  rotReady: {
+    borderColor: C.pad,
+    shadowColor: C.pad,
+    shadowOpacity: 0.6,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 0 },
+  },
   rotText: { fontFamily: F.mono, fontSize: 11, letterSpacing: 1.3, textTransform: 'uppercase', color: C.silk },
 });

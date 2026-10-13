@@ -48,25 +48,53 @@ export interface PlaceResult {
 
 const DEFS: [number, string[]][] = [
   [0.35, ['#']],
-  [1, ['##']], [1, ['#', '#']],
-  [1, ['###']], [1, ['#', '#', '#']],
-  [0.9, ['####']], [0.9, ['#', '#', '#', '#']],
-  [0.55, ['#####']], [0.55, ['#', '#', '#', '#', '#']],
+  [1, ['##']],
+  [1, ['#', '#']],
+  [1, ['###']],
+  [1, ['#', '#', '#']],
+  [0.9, ['####']],
+  [0.9, ['#', '#', '#', '#']],
+  [0.55, ['#####']],
+  [0.55, ['#', '#', '#', '#', '#']],
   [1.2, ['##', '##']],
   [0.45, ['###', '###', '###']],
-  [0.75, ['###', '###']], [0.75, ['##', '##', '##']],
-  [0.8, ['##', '#.']], [0.8, ['##', '.#']], [0.8, ['#.', '##']], [0.8, ['.#', '##']],
-  [0.45, ['###', '#..', '#..']], [0.45, ['###', '..#', '..#']], [0.45, ['#..', '#..', '###']], [0.45, ['..#', '..#', '###']],
-  [0.6, ['#.', '#.', '##']], [0.6, ['.#', '.#', '##']], [0.6, ['##', '#.', '#.']], [0.6, ['##', '.#', '.#']],
-  [0.6, ['###', '#..']], [0.6, ['###', '..#']], [0.6, ['#..', '###']], [0.6, ['..#', '###']],
-  [0.6, ['###', '.#.']], [0.6, ['.#.', '###']], [0.6, ['#.', '##', '#.']], [0.6, ['.#', '##', '.#']],
-  [0.5, ['##.', '.##']], [0.5, ['.##', '##.']], [0.5, ['#.', '##', '.#']], [0.5, ['.#', '##', '#.']],
-  [0.25, ['#.', '.#']], [0.25, ['.#', '#.']],
+  [0.75, ['###', '###']],
+  [0.75, ['##', '##', '##']],
+  [0.8, ['##', '#.']],
+  [0.8, ['##', '.#']],
+  [0.8, ['#.', '##']],
+  [0.8, ['.#', '##']],
+  [0.45, ['###', '#..', '#..']],
+  [0.45, ['###', '..#', '..#']],
+  [0.45, ['#..', '#..', '###']],
+  [0.45, ['..#', '..#', '###']],
+  [0.6, ['#.', '#.', '##']],
+  [0.6, ['.#', '.#', '##']],
+  [0.6, ['##', '#.', '#.']],
+  [0.6, ['##', '.#', '.#']],
+  [0.6, ['###', '#..']],
+  [0.6, ['###', '..#']],
+  [0.6, ['#..', '###']],
+  [0.6, ['..#', '###']],
+  [0.6, ['###', '.#.']],
+  [0.6, ['.#.', '###']],
+  [0.6, ['#.', '##', '#.']],
+  [0.6, ['.#', '##', '.#']],
+  [0.5, ['##.', '.##']],
+  [0.5, ['.##', '##.']],
+  [0.5, ['#.', '##', '.#']],
+  [0.5, ['.#', '##', '#.']],
+  [0.25, ['#.', '.#']],
+  [0.25, ['.#', '#.']],
 ];
 
 export const SHAPES = DEFS.map(([weight, rows]) => {
   const cells: Cell[] = [];
-  rows.forEach((row, r) => [...row].forEach((ch, c) => { if (ch === '#') cells.push([r, c]); }));
+  rows.forEach((row, r) =>
+    [...row].forEach((ch, c) => {
+      if (ch === '#') cells.push([r, c]);
+    }),
+  );
   return { w: rows[0].length, h: rows.length, cells, weight };
 });
 const TOTAL = SHAPES.reduce((a, s) => a + s.weight, 0);
@@ -138,8 +166,12 @@ export function fullLines(grid: number[]): Lines {
 
 export function lineCells({ rows, cols }: Lines) {
   const set = new Set<number>();
-  rows.forEach((r) => { for (let c = 0; c < N; c++) set.add(r * N + c); });
-  cols.forEach((c) => { for (let r = 0; r < N; r++) set.add(r * N + c); });
+  rows.forEach((r) => {
+    for (let c = 0; c < N; c++) set.add(r * N + c);
+  });
+  cols.forEach((c) => {
+    for (let r = 0; r < N; r++) set.add(r * N + c);
+  });
   return set;
 }
 
@@ -169,7 +201,9 @@ function seed(rand: Rand) {
     const c = Math.floor(rand() * (N - p.w + 1));
     if (!fits(grid, p, r, c)) continue;
     const g = grid.slice();
-    p.cells.forEach(([dr, dc]) => { g[(r + dr) * N + c + dc] = p.c; });
+    p.cells.forEach(([dr, dc]) => {
+      g[(r + dr) * N + c + dc] = p.c;
+    });
     const lines = fullLines(g);
     if (lines.rows.length || lines.cols.length) continue;
     grid = g;
@@ -202,7 +236,13 @@ export function spinPiece(s: GameState, i: number): GameState | null {
   return { ...next, over: !anyMove(next) };
 }
 
-export function placePiece(s: GameState, i: number, r: number, c: number, rand: Rand = Math.random): PlaceResult | null {
+export function placePiece(
+  s: GameState,
+  i: number,
+  r: number,
+  c: number,
+  rand: Rand = Math.random,
+): PlaceResult | null {
   const p = s.tray[i];
   if (s.over || !p || !fits(s.grid, p, r, c)) return null;
 
@@ -246,7 +286,7 @@ export function placePiece(s: GameState, i: number, r: number, c: number, rand: 
     combo += 1;
     idle = 0;
     charge = Math.min(MAX_CHARGE, charge + 1);
-    gained += (PTS.line * lineCount * (lineCount + 1) / 2) * combo + extra * PTS.core;
+    gained += ((PTS.line * lineCount * (lineCount + 1)) / 2) * combo + extra * PTS.core;
     hit.forEach((k) => {
       cleared.push({ idx: k, color: grid[k] });
       grid[k] = -1;
@@ -295,11 +335,18 @@ export function previewCells(s: GameState, p: Piece, r: number, c: number) {
 
 export function isGameState(x: unknown): x is GameState {
   const g = x as GameState;
-  return !!g && Array.isArray(g.grid) && g.grid.length === N * N
-    && Array.isArray(g.cores) && g.cores.length === N * N
-    && Array.isArray(g.tray) && g.tray.length === 3
-    && g.tray.every((p) => p === null || Array.isArray(p.cells))
-    && typeof g.score === 'number' && typeof g.charge === 'number';
+  return (
+    !!g &&
+    Array.isArray(g.grid) &&
+    g.grid.length === N * N &&
+    Array.isArray(g.cores) &&
+    g.cores.length === N * N &&
+    Array.isArray(g.tray) &&
+    g.tray.length === 3 &&
+    g.tray.every((p) => p === null || Array.isArray(p.cells)) &&
+    typeof g.score === 'number' &&
+    typeof g.charge === 'number'
+  );
 }
 
 export const fmt = (n: number) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ',');

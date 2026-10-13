@@ -52,7 +52,11 @@ export const Board = memo(function Board({ grid, cores, preview, m, fieldRef, on
     }
     cells.push(
       <View key={i} style={{ position: 'absolute', left: c * m.pitch, top: r * m.pitch }}>
-        {color ? <Led color={color} size={m.cell} b={m.b} glow={m.glow} core={core} dim={dim} bright={bright} /> : <Pad size={m.cell} />}
+        {color ? (
+          <Led color={color} size={m.cell} b={m.b} glow={m.glow} core={core} dim={dim} bright={bright} />
+        ) : (
+          <Pad size={m.cell} />
+        )}
       </View>,
     );
   }
@@ -60,14 +64,55 @@ export const Board = memo(function Board({ grid, cores, preview, m, fieldRef, on
   return (
     <View style={styles.outline}>
       <View style={[styles.board, { width: m.size, height: m.size }]}>
-        <Text style={[styles.silk, { left: m.pad, top: m.pad, width: m.gut, height: m.gut, lineHeight: m.gut, fontSize: m.size * 0.02 }]}>OC-1</Text>
+        <Text
+          style={[
+            styles.silk,
+            { left: m.pad, top: m.pad, width: m.gut, height: m.gut, lineHeight: m.gut, fontSize: m.size * 0.02 },
+          ]}
+        >
+          OC-1
+        </Text>
         {COLS.map((label, c) => (
-          <Text key={label} style={[styles.silk, { left: origin + c * m.pitch, top: m.pad, width: m.cell, height: m.gut, lineHeight: m.gut, fontSize: labelSize }]}>{label}</Text>
+          <Text
+            key={label}
+            style={[
+              styles.silk,
+              {
+                left: origin + c * m.pitch,
+                top: m.pad,
+                width: m.cell,
+                height: m.gut,
+                lineHeight: m.gut,
+                fontSize: labelSize,
+              },
+            ]}
+          >
+            {label}
+          </Text>
         ))}
         {ROWS.map((label, r) => (
-          <Text key={label} style={[styles.silk, { left: m.pad, top: origin + r * m.pitch, width: m.gut, height: m.cell, lineHeight: m.cell, fontSize: labelSize }]}>{label}</Text>
+          <Text
+            key={label}
+            style={[
+              styles.silk,
+              {
+                left: m.pad,
+                top: origin + r * m.pitch,
+                width: m.gut,
+                height: m.cell,
+                lineHeight: m.cell,
+                fontSize: labelSize,
+              },
+            ]}
+          >
+            {label}
+          </Text>
         ))}
-        <View ref={fieldRef} onLayout={onFieldLayout} style={{ position: 'absolute', left: origin, top: origin, width: m.field, height: m.field }}>
+        <View
+          ref={fieldRef}
+          onLayout={onFieldLayout}
+          style={{ position: 'absolute', left: origin, top: origin, width: m.field, height: m.field }}
+        >
           {cells}
           <FxLayer items={fx} m={m} />
         </View>
