@@ -25,8 +25,7 @@ Run lint and typecheck before declaring any task done.
 
 ## Navigation & Routing
 
-- Use **Expo Router** for all navigation. Routes live in `src/app/` — every file there is a screen, `_layout.tsx` files define navigators. Keep non-route code (components, hooks, utils) outside `src/app/`.
-- Import `Link`, `router`, and `useLocalSearchParams` from `expo-router`.
+- The app is a single screen (`App.tsx` renders `src/Game.tsx`) with no router. If a second screen is ever needed, add **Expo Router** with routes in `src/app/` and keep non-route code outside it.
 - Docs: https://docs.expo.dev/router/introduction.md
 
 ## Building with EAS
