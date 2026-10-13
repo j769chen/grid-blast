@@ -1,154 +1,144 @@
-import { useEffect, useState } from 'react';
-import { Animated, Easing, StyleSheet, View } from 'react-native';
+import { memo, useEffect, useMemo, useState } from 'react';
+import { Animated, Easing, StyleSheet, View, type EasingFunction } from 'react-native';
 
-import { C, F, type Metrics } from '../theme';
+import { FX_DURATION, type Fx, type FxSpec } from '../fx';
+import { C, F, NATIVE_DRIVER, type Metrics } from '../theme';
 import { Led } from './Led';
 
-export interface FxSpec {
-  id: number;
-  kind: 'burst' | 'traceH' | 'traceV' | 'ring' | 'points' | 'praise' | 'combo';
-  x: number;
-  y: number;
-  w?: number;
-  h?: number;
-  color?: string;
-  delay?: number;
-  text?: string;
-  surge?: boolean;
-}
+const EASE_IN = Easing.in(Easing.quad);
+const EASE_OUT = Easing.out(Easing.quad);
 
-const DURATION: Record<FxSpec['kind'], number> = {
-  burst: 500,
-  traceH: 450,
-  traceV: 450,
-  ring: 600,
-  points: 900,
-  praise: 1100,
-  combo: 900,
-};
-export const FX_LIFETIME = 1700;
+type Of<K extends Fx['kind']> = Extract<Fx, { kind: K }>;
 
-function range(v: Animated.Value, inputRange: number[], outputRange: number[] | string[]) {
-  return v.interpolate({ inputRange, outputRange: outputRange as number[] });
-}
-
-function FxItem({ it, m }: { it: FxSpec; m: Metrics }) {
+function useProgress(kind: Fx['kind'], delay = 0, easing: EasingFunction = EASE_OUT) {
   const [v] = useState(() => new Animated.Value(0));
   useEffect(() => {
-    Animated.timing(v, {
+    const anim = Animated.timing(v, {
       toValue: 1,
-      duration: DURATION[it.kind],
-      delay: it.delay ?? 0,
-      easing: it.kind === 'burst' ? Easing.in(Easing.quad) : Easing.out(Easing.quad),
-      useNativeDriver: true,
-    }).start();
-  }, [v, it.kind, it.delay]);
+      duration: FX_DURATION[kind],
+      delay,
+      easing,
+      useNativeDriver: NATIVE_DRIVER,
+    });
+    anim.start();
+    return () => anim.stop();
+  }, [v, kind, delay, easing]);
+  return v;
+}
 
-  const box = { position: 'absolute' as const, left: it.x, top: it.y, width: it.w, height: it.h };
+const box = (fx: { x: number; y: number; w: number; h: number }) =>
+  ({ position: 'absolute', left: fx.x, top: fx.y, width: fx.w, height: fx.h }) as const;
 
-  if (it.kind === 'burst') {
-    return (
-      <Animated.View
-        style={[
-          box,
-          {
-            opacity: range(v, [0, 0.35, 1], [1, 1, 0]),
+function Burst({ fx, m }: { fx: Of<'burst'>; m: Metrics }) {
+  const v = useProgress('burst', fx.delay, EASE_IN);
+  const motion = useMemo(
+    () => ({
+      opacity: v.interpolate({ inputRange: [0, 0.35, 1], outputRange: [1, 1, 0] }),
+      transform: [
+        { scale: v.interpolate({ inputRange: [0, 0.35, 1], outputRange: [1, 1.15, 0.1] }) },
+        { rotate: v.interpolate({ inputRange: [0, 0.35, 1], outputRange: ['0deg', '0deg', '25deg'] }) },
+      ],
+    }),
+    [v],
+  );
+  const flash = useMemo(() => ({ opacity: v.interpolate({ inputRange: [0, 0.35], outputRange: [0.8, 0] }) }), [v]);
+  return (
+    <Animated.View style={[box(fx), motion]}>
+      <Led color={fx.color} size={fx.w} b={m.b} />
+      <Animated.View style={[styles.flash, flash]} />
+    </Animated.View>
+  );
+}
+
+function Trace({ fx }: { fx: Of<'trace'> }) {
+  const v = useProgress('trace', fx.delay);
+  const horizontal = fx.axis === 'h';
+  const motion = useMemo(() => {
+    const grow = v.interpolate({ inputRange: [0, 0.45, 1], outputRange: [0, 1, 1] });
+    return {
+      transformOrigin: horizontal ? 'left' : 'top',
+      opacity: v.interpolate({ inputRange: [0, 0.45, 1], outputRange: [1, 0.95, 0] }),
+      transform: [horizontal ? { scaleX: grow } : { scaleY: grow }],
+    };
+  }, [v, horizontal]);
+  return <Animated.View style={[box(fx), styles.trace, fx.surge && styles.surgeTrace, motion]} />;
+}
+
+function Ring({ fx }: { fx: Of<'ring'> }) {
+  const v = useProgress('ring', fx.delay);
+  const motion = useMemo(
+    () => ({
+      opacity: v.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }),
+      transform: [{ scale: v.interpolate({ inputRange: [0, 1], outputRange: [0.2, 5] }) }],
+    }),
+    [v],
+  );
+  return <Animated.View style={[box(fx), styles.ring, { borderRadius: fx.w }, motion]} />;
+}
+
+const TEXT_SIZE = { points: 0.07, combo: 0.06, praise: 0.11 };
+
+function Pop({ fx, m }: { fx: Of<'points' | 'combo' | 'praise'>; m: Metrics }) {
+  const v = useProgress(fx.kind);
+  const fontSize = m.size * TEXT_SIZE[fx.kind];
+  const praise = fx.kind === 'praise';
+  const motion = useMemo(
+    () =>
+      praise
+        ? {
+            opacity: v.interpolate({ inputRange: [0, 0.2, 0.8, 1], outputRange: [0, 1, 1, 0] }),
             transform: [
-              { scale: range(v, [0, 0.35, 1], [1, 1.15, 0.1]) },
-              { rotate: range(v, [0, 0.35, 1], ['0deg', '0deg', '25deg']) },
+              { scale: v.interpolate({ inputRange: [0, 0.2, 0.35, 1], outputRange: [0.4, 1.1, 1, 1] }) },
+              { translateY: v.interpolate({ inputRange: [0.8, 1], outputRange: [0, -fontSize * 0.3] }) },
             ],
+          }
+        : {
+            opacity: v.interpolate({ inputRange: [0, 0.15, 0.7, 1], outputRange: [0, 1, 1, 0] }),
+            transform: [{ translateY: v.interpolate({ inputRange: [0, 1], outputRange: [10, -40] }) }],
           },
-        ]}
-      >
-        <Led color={it.color ?? C.silk} size={it.w ?? 0} b={m.b} />
-        <Animated.View style={[styles.flash, { opacity: range(v, [0, 0.35], [0.8, 0]) }]} />
-      </Animated.View>
-    );
-  }
-
-  if (it.kind === 'traceH' || it.kind === 'traceV') {
-    const horizontal = it.kind === 'traceH';
-    return (
-      <Animated.View
-        style={[
-          box,
-          styles.trace,
-          it.surge && styles.surgeTrace,
-          {
-            transformOrigin: horizontal ? 'left' : 'top',
-            opacity: range(v, [0, 0.45, 1], [1, 0.95, 0]),
-            transform: [
-              horizontal
-                ? { scaleX: range(v, [0, 0.45, 1], [0, 1, 1]) }
-                : { scaleY: range(v, [0, 0.45, 1], [0, 1, 1]) },
-            ],
-          },
-        ]}
-      />
-    );
-  }
-
-  if (it.kind === 'ring') {
-    return (
-      <Animated.View
-        style={[
-          box,
-          styles.ring,
-          {
-            borderRadius: it.w ?? 0,
-            opacity: range(v, [0, 1], [1, 0]),
-            transform: [{ scale: range(v, [0, 1], [0.2, 5]) }],
-          },
-        ]}
-      />
-    );
-  }
-
-  const fontSize = m.size * (it.kind === 'praise' ? 0.11 : it.kind === 'combo' ? 0.06 : 0.07);
-  const textStyle =
-    it.kind === 'praise'
-      ? [styles.praise, { color: it.surge ? C.surgeText : C.pad }]
-      : it.kind === 'combo'
-        ? styles.combo
-        : styles.points;
-  const motion =
-    it.kind === 'praise'
-      ? {
-          opacity: range(v, [0, 0.2, 0.8, 1], [0, 1, 1, 0]),
-          transform: [
-            { scale: range(v, [0, 0.2, 0.35, 1], [0.4, 1.1, 1, 1]) },
-            { translateY: range(v, [0.8, 1], [0, -fontSize * 0.3]) },
-          ],
-        }
-      : {
-          opacity: range(v, [0, 0.15, 0.7, 1], [0, 1, 1, 0]),
-          transform: [{ translateY: range(v, [0, 1], [10, -40]) }],
-        };
-
+    [v, praise, fontSize],
+  );
+  const look =
+    fx.kind === 'praise'
+      ? [styles.praise, { color: fx.surge ? C.surgeText : C.pad }]
+      : fx.kind === 'combo' && styles.combo;
   return (
     <Animated.Text
       numberOfLines={1}
       style={[
         styles.pop,
-        textStyle,
-        { fontSize, left: it.x - m.field / 2, top: it.y - fontSize * 0.65, width: m.field },
+        look,
+        { fontSize, left: fx.x - m.field / 2, top: fx.y - fontSize * 0.65, width: m.field },
         motion,
       ]}
     >
-      {it.text}
+      {fx.text}
     </Animated.Text>
   );
 }
 
-export function FxLayer({ items, m }: { items: FxSpec[]; m: Metrics }) {
+function FxItem({ fx, m }: { fx: FxSpec; m: Metrics }) {
+  switch (fx.kind) {
+    case 'burst':
+      return <Burst fx={fx} m={m} />;
+    case 'trace':
+      return <Trace fx={fx} />;
+    case 'ring':
+      return <Ring fx={fx} />;
+    default:
+      return <Pop fx={fx} m={m} />;
+  }
+}
+
+export const FxLayer = memo(function FxLayer({ items, m }: { items: FxSpec[]; m: Metrics }) {
   return (
     <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-      {items.map((it) => (
-        <FxItem key={it.id} it={it} m={m} />
+      {items.map((fx) => (
+        <FxItem key={fx.id} fx={fx} m={m} />
       ))}
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   flash: { ...StyleSheet.absoluteFill, borderRadius: 3, backgroundColor: '#fff' },
@@ -178,7 +168,6 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 1,
   },
-  points: {},
   praise: { textTransform: 'uppercase', letterSpacing: 1 },
   combo: { fontFamily: F.mono, color: C.comboText },
 });

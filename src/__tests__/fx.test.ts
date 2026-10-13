@@ -26,9 +26,7 @@ const texts = (s: GameState, r: number, c: number) =>
   buildFx(
     placePiece(s, 0, r, c, () => 0.5)!,
     m,
-  )
-    .filter((it) => it.text)
-    .map((it) => `${it.kind}:${it.text}`);
+  ).flatMap((it) => ('text' in it ? [`${it.kind}:${it.text}`] : []));
 
 describe('buildFx', () => {
   it('adds nothing when no line clears', () => {
@@ -68,7 +66,7 @@ describe('buildFx', () => {
     for (let c = 1; c < N; c++) s.grid[c] = 1;
     s.grid[cellIndex(5, 5)] = 2;
     const items = buildFx(placePiece(s, 0, 0, 0)!, m);
-    expect(items.filter((it) => it.kind === 'traceH')).toHaveLength(1);
+    expect(items.filter((it) => it.kind === 'trace' && it.axis === 'h')).toHaveLength(1);
     expect(items.filter((it) => it.kind === 'burst')).toHaveLength(N);
     expect(new Set(items.map((it) => it.id)).size).toBe(items.length);
   });

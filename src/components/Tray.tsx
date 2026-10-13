@@ -5,7 +5,7 @@ import Reanimated, { useAnimatedStyle, type SharedValue } from 'react-native-rea
 
 import type { Point } from '../drag';
 import { turnsToFit, type Piece } from '../engine';
-import { C, F, PART_COLORS, type Metrics } from '../theme';
+import { C, F, NATIVE_DRIVER, PART_COLORS, type Metrics } from '../theme';
 import { RotateIcon } from './Icons';
 import { Led } from './Led';
 
@@ -22,7 +22,7 @@ function MiniPiece({ p, m, kind, index }: { p: Piece; m: Metrics; kind: SlotAnim
       duration: kind === 'deal' ? 300 : 220,
       delay: kind === 'deal' ? index * 50 : 0,
       easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
+      useNativeDriver: NATIVE_DRIVER,
     }).start();
   }, [v, kind, index]);
 

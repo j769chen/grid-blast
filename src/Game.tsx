@@ -4,13 +4,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Background } from './components/Background';
 import { Board } from './components/Board';
-import { FX_LIFETIME, type FxSpec } from './components/Fx';
 import { GameOver } from './components/GameOver';
 import { GhostLayer } from './components/Ghost';
 import { Hud } from './components/Hud';
 import { Tray, type SlotAnim } from './components/Tray';
 import { anyMove, newGame, placePiece, spinPiece, TRAY_SIZE, type GameState } from './engine';
-import { buildFx } from './fx';
+import { buildFx, FX_LIFETIME, type FxSpec } from './fx';
 import { buzz, type Buzz } from './haptics';
 import { loadSaved, saveGame, saveHaptics } from './storage';
 import { C, F, metrics } from './theme';

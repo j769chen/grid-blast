@@ -3,7 +3,7 @@ import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { MAX_CHARGE } from '../engine';
 import { fmt } from '../format';
-import { C, F, type Metrics } from '../theme';
+import { C, F, NATIVE_DRIVER, type Metrics } from '../theme';
 import { RestartIcon, VibrateIcon } from './Icons';
 
 interface HudProps {
@@ -54,14 +54,16 @@ export const Hud = memo(function Hud({
   useEffect(() => {
     if (!shakeKey) return;
     Animated.sequence(
-      [-5, 5, -3, 0].map((toValue) => Animated.timing(shake, { toValue, duration: 60, useNativeDriver: true })),
+      [-5, 5, -3, 0].map((toValue) =>
+        Animated.timing(shake, { toValue, duration: 60, useNativeDriver: NATIVE_DRIVER }),
+      ),
     ).start();
   }, [shakeKey, shake]);
 
   useEffect(() => {
     if (!score) return;
     bump.setValue(1.1);
-    Animated.spring(bump, { toValue: 1, friction: 5, useNativeDriver: true }).start();
+    Animated.spring(bump, { toValue: 1, friction: 5, useNativeDriver: NATIVE_DRIVER }).start();
   }, [score, bump]);
 
   return (
