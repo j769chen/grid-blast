@@ -1,0 +1,31 @@
+{
+  "expo": {
+    "name": "Overclock",
+    "slug": "overclock",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.j769chen.overclock"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#083a26",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "package": "com.j769chen.overclock"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-font"
+    ],
+    "backgroundColor": "#083a26"
+  }
+}
