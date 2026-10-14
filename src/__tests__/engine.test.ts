@@ -5,8 +5,10 @@ import {
   blastCells,
   cellIndex,
   circuitPath,
+  COLOR_COUNT,
   difficulty,
   fits,
+  fullLines,
   isGameState,
   makePiece,
   MIN_CIRCUIT,
@@ -27,6 +29,7 @@ import {
   turnsToFit,
   type GameState,
   type Piece,
+  type PlaceResult,
   type Terminals,
 } from '../engine';
 
@@ -68,6 +71,29 @@ function blank(tray: (Piece | null)[], over: Partial<GameState> = {}): GameState
     over: false,
     ...over,
   };
+}
+
+function randomPlay(seed: number, moves: number, check: (before: GameState, res: PlaceResult) => void) {
+  const rand = seeded(seed);
+  let s = newGame(0, rand);
+  for (let move = 0; move < moves; move++) {
+    if (s.over) s = newGame(s.best, rand);
+    const options: [number, number, number][] = [];
+    s.tray.forEach((p, i) => {
+      if (!p) return;
+      for (let r = 0; r <= N - p.h; r++)
+        for (let c = 0; c <= N - p.w; c++) if (fits(s.grid, p, r, c)) options.push([i, r, c]);
+    });
+    if (!options.length) {
+      const left = s.tray.flatMap((p, i) => (p ? [i] : []));
+      s = spinPiece(s, left[Math.floor(rand() * left.length)])!;
+      continue;
+    }
+    const [i, r, c] = options[Math.floor(rand() * options.length)];
+    const res = placePiece(s, i, r, c, rand)!;
+    check(s, res);
+    s = res.state;
+  }
 }
 
 describe('rotate', () => {
@@ -169,6 +195,25 @@ describe('placePiece', () => {
     expect(res.gained).toBe(10 + 100 + 7 * 40);
   });
 
+  it('raises the peak score along with the score', () => {
+    const s = blank([single(), single(), single()], { score: 90, best: 100 });
+    const one = placePiece(s, 0, 4, 4, seeded())!.state;
+    expect([one.score, one.best]).toEqual([100, 100]);
+    const two = placePiece(one, 1, 4, 6, seeded())!.state;
+    expect([two.score, two.best]).toEqual([110, 110]);
+  });
+
+  it('refuses a part that overlaps or overhangs, an empty socket, and a finished game, without touching the state', () => {
+    const s = blank([bar(3), null, single()]);
+    s.grid[cellIndex(0, 2)] = 1;
+    const before = JSON.stringify(s);
+    expect(placePiece(s, 0, 0, 0)).toBeNull();
+    expect(placePiece(s, 0, 0, 6)).toBeNull();
+    expect(placePiece(s, 1, 4, 4)).toBeNull();
+    expect(placePiece({ ...s, over: true }, 2, 4, 4)).toBeNull();
+    expect(JSON.stringify(s)).toBe(before);
+  });
+
   it('deals a new tray once all three parts are used', () => {
     const s = blank([single(), null, null]);
     const res = placePiece(s, 0, 7, 7, seeded())!;
@@ -202,60 +247,81 @@ describe('spinPiece', () => {
 
 describe('newGame', () => {
   it('produces a valid starting state with no full lines', () => {
-    const s = newGame(1234, seeded(42));
-    expect(isGameState(s)).toBe(true);
-    expect(s.best).toBe(1234);
-    expect(s.grid.some((v) => v >= 0)).toBe(true);
-    expect(s.tray).toHaveLength(3);
+    for (let seed = 1; seed <= 200; seed++) {
+      const s = newGame(1234, seeded(seed));
+      expect(isGameState(s)).toBe(true);
+      expect(s.best).toBe(1234);
+      expect(s.grid.some((v) => v >= 0)).toBe(true);
+      expect(fullLines(s.grid)).toEqual({ rows: [], cols: [] });
+      expect(s.tray).toHaveLength(3);
+    }
   });
 });
 
 describe('isGameState', () => {
-  const valid = () => newGame(0, seeded(7));
-  const tweak = (fn: (s: Record<string, unknown>) => void) => {
-    const s = JSON.parse(JSON.stringify(valid()));
-    fn(s);
+  const corrupt = (path: string, value: unknown) => {
+    const s = JSON.parse(JSON.stringify(newGame(0, seeded(7))));
+    const keys = path.split('.');
+    const last = keys.pop()!;
+    const parent = keys.reduce((o, k) => o[k], s);
+    if (value === undefined) delete parent[last];
+    else parent[last] = value;
     return s;
   };
 
   it('accepts every state reached in play', () => {
-    const rand = seeded(11);
-    let s = valid();
-    for (let move = 0; move < 300; move++) {
-      if (s.over) s = newGame(s.best, rand);
-      const options: [number, number, number][] = [];
-      s.tray.forEach((p, i) => {
-        if (!p) return;
-        for (let r = 0; r <= N - p.h; r++)
-          for (let c = 0; c <= N - p.w; c++) if (fits(s.grid, p, r, c)) options.push([i, r, c]);
-      });
-      if (!options.length) {
-        const i = s.tray.findIndex((p) => p);
-        s = spinPiece(s, i) ?? newGame(s.best, rand);
-      } else {
-        const [i, r, c] = options[Math.floor(rand() * options.length)];
-        s = placePiece(s, i, r, c, rand)!.state;
-      }
-      expect(isGameState(JSON.parse(JSON.stringify(s)))).toBe(true);
-    }
+    randomPlay(11, 300, (_, res) => expect(isGameState(JSON.parse(JSON.stringify(res.state)))).toBe(true));
   });
 
-  it('rejects corrupt saves', () => {
+  it('rejects anything that is not an object', () => {
     expect(isGameState(null)).toBe(false);
     expect(isGameState('{}')).toBe(false);
-    expect(isGameState(tweak((s) => delete s.combo))).toBe(false);
-    expect(isGameState(tweak((s) => (s.score = 'NaN')))).toBe(false);
-    expect(isGameState(tweak((s) => ((s.grid as number[])[0] = 99)))).toBe(false);
-    expect(isGameState(tweak((s) => ((s.tray as Piece[])[0].cells = [1, 2] as unknown as Piece['cells'])))).toBe(false);
-    expect(isGameState(tweak((s) => ((s.tray as Piece[])[0].cells = [[9, 9]])))).toBe(false);
-    expect(isGameState(tweak((s) => ((s.tray as Piece[])[0].core = 99)))).toBe(false);
-    expect(isGameState(tweak((s) => (s.tray as unknown[]).pop()))).toBe(false);
-    expect(isGameState(tweak((s) => ((s.cores as unknown[])[0] = true)))).toBe(false);
-    expect(isGameState(tweak((s) => delete s.terminals))).toBe(false);
-    expect(
-      isGameState(tweak((s) => (s.terminals = { plus: { side: 'left', at: 9 }, minus: { side: 'top', at: 3 } }))),
-    ).toBe(false);
-    expect(isGameState(tweak((s) => ((s.tray as Piece[])[0].coreKind = 'huge' as Piece['coreKind'])))).toBe(false);
+  });
+
+  const part = (over: Partial<Record<keyof Piece, unknown>>) => ({ ...single(), ...over });
+
+  it('accepts the sample save it corrupts below', () => {
+    expect(isGameState(corrupt('tray.0', part({})))).toBe(true);
+  });
+
+  it.each([
+    ['no combo', 'combo', undefined],
+    ['a score that is not a number', 'score', 'NaN'],
+    ['a negative peak', 'best', -1],
+    ['a fractional idle count', 'idle', 1.5],
+    ['no game-over flag', 'over', undefined],
+    ['a short board', 'grid', Array(N * N - 1).fill(-1)],
+    ['an unknown colour on the board', 'grid.0', 99],
+    ['a short core list', 'cores', Array(N * N - 1).fill(null)],
+    ['a core that is not a kind', 'cores.0', true],
+    ['two sockets', 'tray', [null, null]],
+    ['a part with no squares', 'tray.0', part({ cells: [] })],
+    ['a part with flat squares', 'tray.0', part({ cells: [0, 0] })],
+    ['a part with a square outside its box', 'tray.0', part({ cells: [[1, 0]] })],
+    ['a part in an unknown colour', 'tray.0', part({ c: COLOR_COUNT })],
+    ['a core past the end of its part', 'tray.0', part({ core: 1 })],
+    ['an unknown core kind on a part', 'tray.0', part({ coreKind: 'huge' })],
+    ['no terminals', 'terminals', undefined],
+    ['a terminal off the end of an edge', 'terminals.plus.at', N],
+    ['a terminal on an unknown side', 'terminals.plus.side', 'middle'],
+    ['a power-out terminal with no position', 'terminals.minus', { side: 'top' }],
+  ])('rejects a save with %s', (_, path, value) => {
+    expect(isGameState(corrupt(path, value))).toBe(false);
+  });
+});
+
+describe('random play', () => {
+  it('keeps the score, the board, cores and terminals consistent after every move', () => {
+    randomPlay(5, 400, (before, res) => {
+      const s = res.state;
+      expect(s.score).toBe(before.score + res.gained);
+      expect(s.best).toBe(Math.max(before.best, s.score));
+      expect(fullLines(s.grid)).toEqual({ rows: [], cols: [] });
+      expect(circuitPath(s.grid, s.terminals)).toBeNull();
+      expect(s.cores.every((kind, k) => !kind || s.grid[k] >= 0)).toBe(true);
+      expect(res.cleared.every(({ idx }) => s.grid[idx] < 0)).toBe(true);
+      expect(s.over).toBe(!anyMove(s));
+    });
   });
 });
 
@@ -292,6 +358,17 @@ describe('cores', () => {
     expect(res.state.grid[cellIndex(5, 6)]).toBe(3);
     expect(res.gained).toBe(10 + 100 + 40);
   });
+
+  it('multiplies only the line points by the combo, not the core blast', () => {
+    const s = blank([single(), single(), single()], { combo: 1 });
+    for (let r = 1; r < N; r++) s.grid[cellIndex(r, 2)] = 0;
+    s.cores[cellIndex(4, 2)] = 'line';
+    s.grid[cellIndex(4, 6)] = 3;
+    s.grid[cellIndex(5, 6)] = 3;
+    const res = placePiece(s, 0, 0, 2, seeded())!;
+    expect(res.state.combo).toBe(2);
+    expect(res.gained).toBe(10 + 100 * 2 + 40);
+  });
 });
 
 describe('dealing', () => {
@@ -300,6 +377,15 @@ describe('dealing', () => {
     const res = placePiece(s, 0, 0, 0, seeded())!;
     expect(res.dealt).toBe(false);
     expect(res.state.tray).toEqual([null, s.tray[1], null]);
+  });
+
+  it('only puts cores on parts of two or more squares', () => {
+    const rand = seeded(9);
+    const cored = Array.from({ length: 2000 }, () => newTray(Array(N * N).fill(-1), rand))
+      .flat()
+      .filter((p) => p.core >= 0);
+    expect(cored.length).toBeGreaterThan(0);
+    expect(cored.every((p) => p.cells.length > 1)).toBe(true);
   });
 
   it('always deals a set with a part that fits', () => {
@@ -487,6 +573,14 @@ describe('circuits', () => {
     expect(res.gained).toBe(10 + route.length * 50 + 2 * 40);
   });
 
+  it('scores the path and the squares around it at face value whatever the combo', () => {
+    const s = { ...wired(2), combo: 2 };
+    s.grid[cellIndex(1, 1)] = 3;
+    const res = placePiece(s, 0, 2, 0, seeded())!;
+    expect(res.state.combo).toBe(3);
+    expect(res.gained).toBe(10 + route.length * 50 + 40);
+  });
+
   it('adds the circuit to line clears in the same move', () => {
     const s = wired(2);
     for (let c = 1; c < N; c++) s.grid[cellIndex(2, c)] = 1;
@@ -610,6 +704,18 @@ describe('difficulty ramp', () => {
     const hard = deal(1);
     expect(hard.cells).toBeGreaterThan(easy.cells + 0.5);
     expect(hard.cores).toBeLessThan(easy.cores * 0.6);
+  });
+
+  it('deals the next set at the difficulty of the score just reached', () => {
+    const cellsPerPart = (score: number) => {
+      const rand = seeded(3);
+      const parts = Array.from(
+        { length: 300 },
+        () => placePiece(blank([single(), null, null], { score }), 0, 7, 7, rand)!.state.tray,
+      ).flat();
+      return parts.reduce((a, p) => a + p!.cells.length, 0) / parts.length;
+    };
+    expect(cellsPerPart(RAMP.to)).toBeGreaterThan(cellsPerPart(0) + 0.3);
   });
 
   it('moves terminals farther apart after a circuit at a high score', () => {
