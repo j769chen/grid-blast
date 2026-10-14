@@ -13,7 +13,7 @@ import { anyMove, newGame, placePiece, spinPiece, TRAY_SIZE, type GameState, typ
 import { fmt } from './format';
 import { buildFx, circuitDelay, FX_LIFETIME, type FxSpec } from './fx';
 import { buzz, type Buzz } from './haptics';
-import { loadSaved, saveGame, saveHaptics } from './storage';
+import { loadSaved, saveGame, saveHaptics, saveHelpSeen } from './storage';
 import { C, metrics } from './theme';
 import { useDragGestures } from './useDragGestures';
 
@@ -41,6 +41,7 @@ export default function Game() {
   const stateRef = useRef<GameState | null>(null);
   const mRef = useRef(m);
   const hapticsRef = useRef(true);
+  const helpSeen = useRef(true);
   const startBest = useRef(0);
   useEffect(() => {
     mRef.current = m;
@@ -74,9 +75,13 @@ export default function Game() {
   useEffect(() => {
     let alive = true;
     loadSaved()
-      .then(({ saved, best, haptics }) => {
+      .then(({ saved, best, haptics, helpSeen: seen }) => {
         if (!alive) return;
         if (!haptics) setHapticsOn(false);
+        if (!seen) {
+          helpSeen.current = false;
+          setHelpOpen(true);
+        }
         if (saved && !saved.game.over) {
           const game = { ...saved.game, best: Math.max(saved.game.best, best) };
           startBest.current = saved.startBest;
@@ -194,7 +199,12 @@ export default function Game() {
   }, [hapticsOn]);
 
   const openHelp = useCallback(() => setHelpOpen(true), []);
-  const closeHelp = useCallback(() => setHelpOpen(false), []);
+  const closeHelp = useCallback(() => {
+    setHelpOpen(false);
+    if (helpSeen.current) return;
+    helpSeen.current = true;
+    saveHelpSeen();
+  }, []);
 
   const restart = useCallback(() => {
     const s = stateRef.current;

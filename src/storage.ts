@@ -2,7 +2,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { isGameState, N, pickTerminals, type GameState } from './engine';
 
-const KEY = { game: 'overclock.game', best: 'overclock.best', haptics: 'overclock.haptics' };
+const KEY = {
+  game: 'overclock.game',
+  best: 'overclock.best',
+  haptics: 'overclock.haptics',
+  help: 'overclock.helpSeen',
+};
 export const SAVE_VERSION = 6;
 
 export interface SavedGame {
@@ -14,6 +19,7 @@ export interface Saved {
   saved: SavedGame | null;
   best: number;
   haptics: boolean;
+  helpSeen: boolean;
 }
 
 const UNREAD = Number.POSITIVE_INFINITY;
@@ -89,7 +95,12 @@ export function parseSave(raw: string | null): SavedGame | null {
 }
 
 export async function loadSaved(): Promise<Saved> {
-  const [game, best, haptics] = await Promise.all([read(KEY.game), read(KEY.best), read(KEY.haptics)]);
+  const [game, best, haptics, help] = await Promise.all([
+    read(KEY.game),
+    read(KEY.best),
+    read(KEY.haptics),
+    read(KEY.help),
+  ]);
   gameWritable = game !== FAILED;
   const bestNum = best === FAILED ? 0 : Math.max(0, Number(best) || 0);
   storedBest = best === FAILED ? UNREAD : bestNum;
@@ -97,6 +108,7 @@ export async function loadSaved(): Promise<Saved> {
     saved: game === FAILED ? null : parseSave(game),
     best: bestNum,
     haptics: haptics !== 'false',
+    helpSeen: help === FAILED || help === 'true',
   };
 }
 
@@ -112,6 +124,10 @@ export function saveGame(game: GameState, startBest: number) {
 
 export function saveHaptics(on: boolean) {
   AsyncStorage.setItem(KEY.haptics, String(on)).catch(() => {});
+}
+
+export function saveHelpSeen() {
+  AsyncStorage.setItem(KEY.help, 'true').catch(() => {});
 }
 
 export function clearSavedGame() {
