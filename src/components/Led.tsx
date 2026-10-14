@@ -1,5 +1,5 @@
 import { memo, useEffect } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import Animated, {
   cancelAnimation,
   Easing,
@@ -12,7 +12,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import type { CoreKind } from '../engine';
-import { C, glow as halo } from '../theme';
+import { C, F, glow as halo } from '../theme';
 
 const pulse = makeMutable(0);
 const PULSE = { duration: 700, easing: Easing.inOut(Easing.ease) };
@@ -115,6 +115,14 @@ export const Pad = memo(function Pad({ size }: { size: number }) {
   );
 });
 
+export function PortSign({ sign, size }: { sign: string; size: number }) {
+  return (
+    <View style={[styles.port, { width: size, height: size, borderRadius: size }]}>
+      <Text style={[styles.sign, { fontSize: size * 0.75, lineHeight: size }]}>{sign}</Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   led: { borderRadius: 3, borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)' },
   shade: {
@@ -147,4 +155,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  port: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: C.pad,
+    backgroundColor: C.ink,
+    boxShadow: halo(C.pad, 5, 0.9),
+  },
+  sign: { color: C.pad, fontFamily: F.bold, textAlign: 'center' },
 });
