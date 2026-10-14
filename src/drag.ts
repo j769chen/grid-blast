@@ -45,7 +45,7 @@ export interface DragShared {
   slots: SharedValue<Slot[]>;
   missFrom: SharedValue<Point[]>;
   back: SharedValue<number[]>;
-  shrink: SharedValue<number[]>;
+  shrink: SharedValue<number>;
   target: SharedValue<number>;
   lines: SharedValue<Clears>;
 }
@@ -59,7 +59,7 @@ export function returnFrame(d: DragShared, i: number) {
   const s = d.slots.get()[i];
   const x = s.x + s.w / 2 - g.w / 2;
   const y = s.y + s.h / 2 - g.h / 2;
-  return { x: from.x + (x - from.x) * t, y: from.y + (y - from.y) * t, scale: 1 + (d.shrink.get()[i] - 1) * t };
+  return { x: from.x + (x - from.x) * t, y: from.y + (y - from.y) * t, scale: 1 + (d.shrink.get() - 1) * t };
 }
 
 export function ghostFrame(d: DragShared, i: number): Point {
@@ -110,7 +110,7 @@ export function targetCell(frame: Point, field: Point, pitch: number, grid: numb
 
 export function completedLines(grid: number[], g: SlotGeo | null, code: number, t: Terminals): Clears {
   'worklet';
-  if (!g || code === NO_CELL || grid.length !== N * N) return { rows: [], cols: [], circuit: [] };
+  if (!g || code === NO_CELL) return { rows: [], cols: [], circuit: [] };
   const placed = grid.slice();
   for (let k = 0; k < g.cells.length; k += 2) placed[code + g.cells[k] * N + g.cells[k + 1]] = 0;
   const path = circuitPath(placed, t) ?? [];

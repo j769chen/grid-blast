@@ -82,7 +82,7 @@ function drag(touch: { x: number; y: number }, mouse: boolean, back = [1, 1, 1],
       { x: 0, y: 0 },
     ]),
     back: sv(back),
-    shrink: sv([0.5, 0.5, 0.5]),
+    shrink: sv(0.5),
     target: sv(NO_CELL),
     lines: sv<Clears>({ rows: [], cols: [], circuit: [] }),
   };
