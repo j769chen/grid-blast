@@ -342,15 +342,6 @@ export function placePiece(
   };
 }
 
-export function previewCells(s: GameState, p: Piece, r: number, c: number) {
-  const g = s.grid.slice();
-  const ghost = p.cells.map(([dr, dc]) => cellIndex(r + dr, c + dc));
-  ghost.forEach((i) => {
-    g[i] = p.c;
-  });
-  return { ghost, hint: [...lineCells(fullLines(g))], core: p.core >= 0 ? ghost[p.core] : -1 };
-}
-
 const isInt = (v: unknown, lo: number, hi: number): v is number =>
   typeof v === 'number' && Number.isInteger(v) && v >= lo && v <= hi;
 

@@ -1,18 +1,17 @@
 import { memo, type Ref } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { N, type CoreKind } from '../engine';
+import type { DragShared } from '../drag';
+import { N, type CoreKind, type Piece } from '../engine';
 import { C, F, PART_COLORS, type Metrics } from '../theme';
 import type { FxSpec } from '../fx';
 import { FxLayer } from './Fx';
 import { Led, Pad } from './Led';
+import { ShadowLayer } from './Shadow';
 
 export interface Preview {
-  ghost: Set<number>;
   hint: Set<number>;
   color: string;
-  coreIdx: number;
-  coreKind: CoreKind;
 }
 
 interface BoardProps {
@@ -23,12 +22,24 @@ interface BoardProps {
   fieldRef: Ref<View>;
   onBoardLayout: () => void;
   fx: FxSpec[];
+  tray: (Piece | null)[];
+  drag: DragShared;
 }
 
 const COLS = ['1', '2', '3', '4', '5', '6', '7', '8'];
 const ROWS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
 
-export const Board = memo(function Board({ grid, cores, preview, m, fieldRef, onBoardLayout, fx }: BoardProps) {
+export const Board = memo(function Board({
+  grid,
+  cores,
+  preview,
+  m,
+  fieldRef,
+  onBoardLayout,
+  fx,
+  tray,
+  drag,
+}: BoardProps) {
   const origin = m.pad + m.gut;
   const labelSize = m.size * 0.03;
 
@@ -36,26 +47,13 @@ export const Board = memo(function Board({ grid, cores, preview, m, fieldRef, on
   for (let i = 0; i < N * N; i++) {
     const r = Math.floor(i / N);
     const c = i % N;
-    let color: string | null = null;
-    let core: CoreKind | null = null;
-    let dim = false;
-    let bright = false;
-    if (preview?.hint.has(i)) {
-      color = preview.color;
-      bright = true;
-      core = cores[i] ?? (i === preview.coreIdx ? preview.coreKind : null);
-    } else if (preview?.ghost.has(i)) {
-      color = preview.color;
-      dim = true;
-      core = i === preview.coreIdx ? preview.coreKind : null;
-    } else if (grid[i] >= 0) {
-      color = PART_COLORS[grid[i]];
-      core = cores[i];
-    }
+    const bright = !!preview?.hint.has(i);
+    const color = bright ? preview!.color : grid[i] >= 0 ? PART_COLORS[grid[i]] : null;
+    const core = color ? cores[i] : null;
     cells.push(
       <View key={i} style={{ position: 'absolute', left: c * m.pitch, top: r * m.pitch }}>
         {color ? (
-          <Led color={color} size={m.cell} b={m.b} glow={m.glow} core={core} dim={dim} bright={bright} />
+          <Led color={color} size={m.cell} b={m.b} glow={m.glow} core={core} bright={bright} />
         ) : (
           <Pad size={m.cell} />
         )}
@@ -115,6 +113,7 @@ export const Board = memo(function Board({ grid, cores, preview, m, fieldRef, on
           style={{ position: 'absolute', left: origin, top: origin, width: m.field, height: m.field }}
         >
           {cells}
+          <ShadowLayer tray={tray} m={m} drag={drag} />
           <FxLayer items={fx} m={m} />
         </View>
         <View pointerEvents="none" style={styles.edge} />

@@ -71,6 +71,6 @@ src/storage.ts          saved game, peak score and vibration setting
 src/haptics.ts          vibration patterns
 src/theme.ts            colors, fonts, board sizing
 src/format.ts           number formatting
-src/components/         Board, Tray, Ghost, Hud, Fx, GameOver, Led, Background, Icons
+src/components/         Board, Tray, Ghost, Shadow, Hud, Fx, GameOver, Led, ErrorBoundary, Background, Icons
 src/__tests__/          unit tests
 ```

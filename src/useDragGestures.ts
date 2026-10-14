@@ -6,16 +6,18 @@ import { scheduleOnRN, scheduleOnUI } from 'react-native-worklets';
 
 import type { Preview } from './components/Board';
 import {
+  completedLines,
   decodeCell,
   ghostFrame,
   NO_CELL,
+  sameLines,
   targetCell,
   type DragShared,
   type Point,
   type Slot,
   type SlotGeo,
 } from './drag';
-import { fits, previewCells, TRAY_SIZE, type GameState, type Piece } from './engine';
+import { cellIndex, N, TRAY_SIZE, type GameState, type Lines, type Piece } from './engine';
 import type { Buzz } from './haptics';
 import { PART_COLORS, span, type Metrics } from './theme';
 
@@ -66,14 +68,16 @@ export function useDragGestures({ state, stateRef, m, onPlace, haptic }: Options
   const missFrom = useSharedValue<Point[]>(SLOTS.map(() => ({ x: 0, y: 0 })));
   const back = useSharedValue(DONE);
   const shrink = useSharedValue((m.mini + m.miniGap) / m.pitch);
+  const target = useSharedValue(NO_CELL);
+  const lines = useSharedValue<Lines>({ rows: [], cols: [] });
   const enabled = useSharedValue(false);
   const moved = useSharedValue(false);
   const mouse = useSharedValue(false);
   const landing = useSharedValue<(Point | null)[]>(SLOTS.map(() => null));
   const events = useSharedValue<DragEvent[]>([]);
   const drag = useMemo<DragShared>(
-    () => ({ slot: dragSlot, touch, origin, pitch, mouse, geo, landing, slots, missFrom, back, shrink }),
-    [dragSlot, touch, origin, pitch, mouse, geo, landing, slots, missFrom, back, shrink],
+    () => ({ slot: dragSlot, touch, origin, pitch, mouse, geo, landing, slots, missFrom, back, shrink, target, lines }),
+    [dragSlot, touch, origin, pitch, mouse, geo, landing, slots, missFrom, back, shrink, target, lines],
   );
 
   useEffect(() => {
@@ -122,27 +126,20 @@ export function useDragGestures({ state, stateRef, m, onPlace, haptic }: Options
     [stateRef, haptic],
   );
 
-  const onDragCell = useCallback(
-    (code: number) => {
+  const onLines = useCallback(
+    (next: Lines) => {
       const d = dragRef.current;
       const s = stateRef.current;
-      if (!d || !s || code === NO_CELL) {
+      if (!d || !s || (!next.rows.length && !next.cols.length)) {
         setPreview(null);
         return;
       }
-      const { r, c } = decodeCell(code);
-      if (!fits(s.grid, d.p, r, c)) {
-        setPreview(null);
-        return;
+      const hint = new Set<number>();
+      for (let j = 0; j < N; j++) {
+        next.rows.forEach((r) => s.grid[cellIndex(r, j)] >= 0 && hint.add(cellIndex(r, j)));
+        next.cols.forEach((c) => s.grid[cellIndex(j, c)] >= 0 && hint.add(cellIndex(j, c)));
       }
-      const pv = previewCells(s, d.p, r, c);
-      setPreview({
-        ghost: new Set(pv.ghost),
-        hint: new Set(pv.hint),
-        color: PART_COLORS[d.p.c],
-        coreIdx: pv.core,
-        coreKind: d.p.coreKind,
-      });
+      setPreview({ hint, color: PART_COLORS[d.p.c] });
     },
     [stateRef],
   );
@@ -186,7 +183,13 @@ export function useDragGestures({ state, stateRef, m, onPlace, haptic }: Options
       return targetCell(ghostFrame(drag, i), field.get(), pitch.get(), grid.get(), geo.get()[i]);
     },
     (code, prev) => {
-      if (code !== prev && dragSlot.get() >= 0) scheduleOnRN(onDragCell, code);
+      if (code === prev) return;
+      target.set(code);
+      const i = dragSlot.get();
+      const next = completedLines(grid.get(), i < 0 ? null : geo.get()[i], code);
+      if (sameLines(next, lines.get())) return;
+      lines.set(next);
+      scheduleOnRN(onLines, next);
     },
   );
 
