@@ -1,7 +1,5 @@
 export const N = 8;
 export const TRAY_SIZE = 3;
-export const BUFFER = TRAY_SIZE;
-export const SOURCES = TRAY_SIZE + 1;
 export const COLOR_COUNT = 7;
 export const CORE_CHANCE = 0.4;
 export const AREA_CHANCE = 0.5;
@@ -45,8 +43,6 @@ export interface GameState {
   cores: (CoreKind | null)[];
   terminals: Terminals;
   tray: (Piece | null)[];
-  buffer: Piece | null;
-  stashed: boolean;
   score: number;
   best: number;
   combo: number;
@@ -172,12 +168,8 @@ export function turnsToFit(grid: number[], p: Piece) {
   return -1;
 }
 
-export function parts(s: GameState): (Piece | null)[] {
-  return [...s.tray, s.buffer];
-}
-
 export function anyMove(s: GameState) {
-  return parts(s).some((p) => p !== null && turnsToFit(s.grid, p) >= 0);
+  return s.tray.some((p) => p !== null && turnsToFit(s.grid, p) >= 0);
 }
 
 export function fullLines(grid: number[]): Lines {
@@ -350,8 +342,6 @@ export function newGame(best: number, rand: Rand = Math.random): GameState {
     cores: Array(N * N).fill(null),
     terminals: pickTerminals(grid, rand),
     tray,
-    buffer: null,
-    stashed: false,
     score: 0,
     best,
     combo: 0,
@@ -361,26 +351,11 @@ export function newGame(best: number, rand: Rand = Math.random): GameState {
 }
 
 export function spinPiece(s: GameState, i: number): GameState | null {
-  const p = parts(s)[i];
+  const p = s.tray[i];
   if (s.over || !p) return null;
-  if (i === BUFFER) return { ...s, buffer: rotate(p) };
   const tray = s.tray.slice();
   tray[i] = rotate(p);
   return { ...s, tray };
-}
-
-export function stashPiece(s: GameState, i: number, rand: Rand = Math.random): GameState | null {
-  const p = s.tray[i];
-  if (s.over || s.stashed || i === BUFFER || !p) return null;
-  let tray = s.tray.slice();
-  tray[i] = s.buffer;
-  let stashed = true;
-  if (tray.every((x) => !x)) {
-    tray = newTray(s.grid, rand);
-    stashed = false;
-  }
-  const next = { ...s, tray, buffer: p, stashed };
-  return { ...next, over: !anyMove(next) };
 }
 
 export function placePiece(
@@ -390,7 +365,7 @@ export function placePiece(
   c: number,
   rand: Rand = Math.random,
 ): PlaceResult | null {
-  const p = parts(s)[i];
+  const p = s.tray[i];
   if (s.over || !p || !fits(s.grid, p, r, c)) return null;
 
   const grid = s.grid.slice();
@@ -445,7 +420,7 @@ export function placePiece(
   }
 
   let tray = s.tray.slice();
-  if (i !== BUFFER) tray[i] = null;
+  tray[i] = null;
   const dealt = tray.every((x) => !x);
   if (dealt) tray = newTray(grid, rand);
 
@@ -456,8 +431,6 @@ export function placePiece(
     cores,
     terminals,
     tray,
-    buffer: i === BUFFER ? null : s.buffer,
-    stashed: dealt ? false : s.stashed,
     score,
     best: Math.max(s.best, score),
     combo,
@@ -518,8 +491,6 @@ export function isGameState(x: unknown): x is GameState {
     Array.isArray(tray) &&
     tray.length === TRAY_SIZE &&
     tray.every((p) => p === null || isPiece(p)) &&
-    (g.buffer === null || isPiece(g.buffer)) &&
-    typeof g.stashed === 'boolean' &&
     isInt(g.score, 0, Number.MAX_SAFE_INTEGER) &&
     isInt(g.best, 0, Number.MAX_SAFE_INTEGER) &&
     isInt(g.combo, 0, Number.MAX_SAFE_INTEGER) &&

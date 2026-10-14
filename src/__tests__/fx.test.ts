@@ -13,8 +13,6 @@ function state(tray: (Piece | null)[], over: Partial<GameState> = {}): GameState
     cores: Array(N * N).fill(null),
     terminals: { plus: { side: 'left', at: 3 }, minus: { side: 'top', at: 3 } },
     tray,
-    buffer: null,
-    stashed: false,
     score: 0,
     best: 0,
     combo: 0,

@@ -19,13 +19,7 @@ npx expo start
 - Drag parts from the three sockets (U1–U3) onto the 8×8 board.
 - Fill a row or column to clear it. Rows and columns clear together.
 - When all three parts are placed, a new set is dealt. Every new set has at least one part that fits in some rotation.
-- The game ends when no remaining part, including the one in the buffer, fits in any rotation.
-
-## Buffer
-
-- Drag a part from the tray down onto the buffer socket (BUF) to store it for later. If the buffer already holds a part, they swap.
-- You get one store or swap per set; the buffer dims until the next set is dealt. Storing the last part of a set deals a new one.
-- Drag the stored part onto the board like any other part. It has its own Rotate button, and it counts when checking whether any part still fits.
+- The game ends when no remaining part fits in any rotation.
 
 ## Rotation
 
