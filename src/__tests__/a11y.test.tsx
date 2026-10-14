@@ -10,7 +10,17 @@ import { Hud } from '../components/Hud';
 import { Tray } from '../components/Tray';
 import { describeCell, describePiece, describePlacement, PART_NAMES } from '../describe';
 import { NO_CELL, OFFSCREEN, type Clears, type DragShared, type Point, type SlotGeo } from '../drag';
-import { cellIndex, COLOR_COUNT, makePiece, N, placePiece, type CoreKind, type Piece, type Terminals } from '../engine';
+import {
+  cellIndex,
+  COLOR_COUNT,
+  makePiece,
+  N,
+  placePiece,
+  type CoreKind,
+  type GameState,
+  type Piece,
+  type Terminals,
+} from '../engine';
 import { metrics, PART_COLORS } from '../theme';
 
 const m = metrics(390, 800);
@@ -99,6 +109,29 @@ describe('screen reader descriptions', () => {
       0,
     )!;
     expect(describePlacement(res)).toBe('Placed. 1 line cleared. Score 110.');
+  });
+
+  it('counts lines in the plural and says when the game is over', () => {
+    const state = (grid: number[], tray: (Piece | null)[]): GameState => ({
+      grid,
+      cores: Array(N * N).fill(null),
+      terminals: { plus: { side: 'left', at: 0 }, minus: { side: 'top', at: 7 } },
+      tray,
+      score: 0,
+      best: 0,
+      combo: 0,
+      idle: 0,
+      over: false,
+    });
+    const corner = Array<number>(N * N).fill(-1);
+    for (let i = 0; i < N - 1; i++) corner[cellIndex(7, i)] = corner[cellIndex(i, 7)] = 1;
+    corner[cellIndex(3, 3)] = 2;
+    const two = placePiece(state(corner, [single(), single(), single()]), 0, 7, 7)!;
+    expect(describePlacement(two)).toBe('Placed. 2 lines cleared. Score 310.');
+
+    const checks = Array.from({ length: N * N }, (_, k) => ((Math.floor(k / N) + (k % N)) % 2 ? 3 : -1));
+    const last = placePiece(state(checks, [single(), makePiece(1, 2), null]), 0, 3, 3)!;
+    expect(describePlacement(last)).toBe('Placed. Score 10. No part fits. Game over.');
   });
 });
 
