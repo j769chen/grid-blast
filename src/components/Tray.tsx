@@ -177,7 +177,7 @@ const styles = StyleSheet.create({
     fontFamily: F.mono,
     fontSize: 10,
     letterSpacing: 1,
-    color: C.silkDim,
+    color: C.silkLabel,
   },
   chosen: { borderStyle: 'solid', borderWidth: 2, borderColor: C.pad },
   rotCell: { flex: 1, alignItems: 'center' },
