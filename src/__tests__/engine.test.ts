@@ -9,6 +9,7 @@ import {
   fits,
   isGameState,
   makePiece,
+  MIN_CIRCUIT,
   N,
   newGame,
   newTray,
@@ -475,15 +476,36 @@ describe('circuits', () => {
     expect(res.gained).toBe(10 + 100 + route.length * 50);
   });
 
-  it('never deals terminals that are already connected', () => {
+  it('never deals terminals that are already connected or closer than a 7-square circuit', () => {
     for (let seed = 1; seed <= 60; seed++) {
       const g = newGame(0, seeded(seed));
       expect(circuitPath(g.grid, g.terminals)).toBeNull();
-      expect(g.terminals.row).toBeGreaterThanOrEqual(3);
-      expect(g.terminals.col).toBeGreaterThanOrEqual(3);
+      expect(g.terminals.row + g.terminals.col + 1).toBeGreaterThanOrEqual(MIN_CIRCUIT);
     }
     const s = wired();
     expect(circuitPath(s.grid, pickTerminals(s.grid, seeded(5)))).toBeNull();
+  });
+
+  it('can deal terminals on any row and column far enough apart', () => {
+    const grid = Array<number>(N * N).fill(-1);
+    const seen = new Set<string>();
+    for (let k = 0; k < 200; k++) {
+      const t = pickTerminals(grid, () => k / 200);
+      seen.add(`${t.row},${t.col}`);
+    }
+    expect(seen.size).toBe(43);
+    expect(seen).toContain('0,6');
+    expect(seen).toContain('7,0');
+    expect(seen).not.toContain('2,3');
+  });
+
+  it('moves the + to a new row and the − to a new column after a circuit', () => {
+    for (let k = 0; k < 30; k++) {
+      const res = placePiece(wired(2), 0, 2, 0, () => (k + 0.5) / 30)!;
+      expect(res.circuit).toHaveLength(route.length);
+      expect(res.state.terminals.row).not.toBe(terminals.row);
+      expect(res.state.terminals.col).not.toBe(terminals.col);
+    }
   });
 });
 
