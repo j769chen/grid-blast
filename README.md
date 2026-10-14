@@ -20,7 +20,7 @@ npx expo start
 - Fill a row or column to clear it. Rows and columns clear together.
 - When all three parts are placed, a new set is dealt. Every new set has at least one part that fits in some rotation.
 - The game ends when no remaining part fits in any rotation.
-- Tap **?** at the top of the screen for a summary of these rules. Vibration is switched on and off there too.
+- Tap **?** at the top of the screen for a summary of these rules. It opens on its own the first time you play. Vibration is switched on and off there too.
 
 ## Rotation
 
@@ -51,7 +51,7 @@ npx expo start
 - Completing a circuit adds 50 per square on its path and 40 per square touching the path.
 - Emptying the whole board adds 3,000.
 
-Peak score, the game in progress, and the vibration setting are saved on the device (AsyncStorage, which is `localStorage` on the web).
+Peak score, the game in progress, the vibration setting, and whether you've seen the rules are saved on the device (AsyncStorage, which is `localStorage` on the web).
 
 ## Dragging
 

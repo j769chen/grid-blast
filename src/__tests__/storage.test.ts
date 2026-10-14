@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { circuitPath, MIN_CIRCUIT, newGame, shortestCircuit } from '../engine';
-import { loadSaved, parseSave, saveGame, SAVE_VERSION } from '../storage';
+import { loadSaved, parseSave, saveGame, saveHelpSeen, SAVE_VERSION } from '../storage';
 
 const game = (best = 0) => newGame(best, () => 0.5);
 const stored = (key: string) => AsyncStorage.getItem(key);
@@ -112,10 +112,31 @@ describe('loadSaved and saveGame', () => {
     const fail = () => Promise.reject(new Error('io'));
     jest.mocked(AsyncStorage.getItem).mockImplementationOnce(fail).mockImplementationOnce(fail);
     const loaded = await loadSaved();
-    expect(loaded).toEqual({ saved: null, best: 0, haptics: true });
+    expect(loaded).toEqual({ saved: null, best: 0, haptics: true, helpSeen: false });
     saveGame({ ...game(), score: 50, best: 50 }, 0);
     await flush();
     expect(await stored('overclock.best')).toBe('900');
     expect(await stored('overclock.game')).toBe('kept');
+  });
+});
+
+describe('help panel flag', () => {
+  it('is unset until the panel has been seen', async () => {
+    expect((await loadSaved()).helpSeen).toBe(false);
+    saveHelpSeen();
+    await flush();
+    expect(await stored('overclock.helpSeen')).toBe('true');
+    expect((await loadSaved()).helpSeen).toBe(true);
+  });
+
+  it('counts as seen when it cannot be read, so the panel never reopens on every launch', async () => {
+    const getItem = jest.mocked(AsyncStorage.getItem);
+    const real = getItem.getMockImplementation()!;
+    getItem.mockImplementation((key) => (key === 'overclock.helpSeen' ? Promise.reject(new Error('io')) : real(key)));
+    try {
+      expect((await loadSaved()).helpSeen).toBe(true);
+    } finally {
+      getItem.mockImplementation(real);
+    }
   });
 });
