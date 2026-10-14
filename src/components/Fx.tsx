@@ -1,8 +1,19 @@
-import { memo, useEffect, useMemo, useState } from 'react';
-import { Animated, Easing, StyleSheet, View, type EasingFunction } from 'react-native';
+import { memo, useEffect } from 'react';
+import { StyleSheet, View } from 'react-native';
+import Animated, {
+  cancelAnimation,
+  Easing,
+  interpolate,
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withTiming,
+  type EasingFunction,
+  type SharedValue,
+} from 'react-native-reanimated';
 
 import { FX_DURATION, type Fx, type FxSpec } from '../fx';
-import { C, F, glow, NATIVE_DRIVER, type Metrics } from '../theme';
+import { C, F, glow, type Metrics } from '../theme';
 import { Led } from './Led';
 
 const EASE_IN = Easing.in(Easing.quad);
@@ -10,18 +21,11 @@ const EASE_OUT = Easing.out(Easing.quad);
 
 type Of<K extends Fx['kind']> = Extract<Fx, { kind: K }>;
 
-function useProgress(kind: Fx['kind'], delay = 0, easing: EasingFunction = EASE_OUT) {
-  const [v] = useState(() => new Animated.Value(0));
+function useProgress(kind: Fx['kind'], delay = 0, easing: EasingFunction = EASE_OUT): SharedValue<number> {
+  const v = useSharedValue(0);
   useEffect(() => {
-    const anim = Animated.timing(v, {
-      toValue: 1,
-      duration: FX_DURATION[kind],
-      delay,
-      easing,
-      useNativeDriver: NATIVE_DRIVER,
-    });
-    anim.start();
-    return () => anim.stop();
+    v.set(withDelay(delay, withTiming(1, { duration: FX_DURATION[kind], easing })));
+    return () => cancelAnimation(v);
   }, [v, kind, delay, easing]);
   return v;
 }
@@ -31,17 +35,14 @@ const box = (fx: { x: number; y: number; w: number; h: number }) =>
 
 function Burst({ fx, m }: { fx: Of<'burst'>; m: Metrics }) {
   const v = useProgress('burst', fx.delay, EASE_IN);
-  const motion = useMemo(
-    () => ({
-      opacity: v.interpolate({ inputRange: [0, 0.35, 1], outputRange: [1, 1, 0] }),
-      transform: [
-        { scale: v.interpolate({ inputRange: [0, 0.35, 1], outputRange: [1, 1.15, 0.1] }) },
-        { rotate: v.interpolate({ inputRange: [0, 0.35, 1], outputRange: ['0deg', '0deg', '25deg'] }) },
-      ],
-    }),
-    [v],
-  );
-  const flash = useMemo(() => ({ opacity: v.interpolate({ inputRange: [0, 0.35], outputRange: [0.8, 0] }) }), [v]);
+  const motion = useAnimatedStyle(() => ({
+    opacity: interpolate(v.get(), [0, 0.35, 1], [1, 1, 0]),
+    transform: [
+      { scale: interpolate(v.get(), [0, 0.35, 1], [1, 1.15, 0.1]) },
+      { rotate: `${interpolate(v.get(), [0, 0.35, 1], [0, 0, 25])}deg` },
+    ],
+  }));
+  const flash = useAnimatedStyle(() => ({ opacity: interpolate(v.get(), [0, 0.35], [0.8, 0]) }));
   return (
     <Animated.View style={[box(fx), motion]}>
       <Led color={fx.color} size={fx.w} b={m.b} />
@@ -53,38 +54,41 @@ function Burst({ fx, m }: { fx: Of<'burst'>; m: Metrics }) {
 function Trace({ fx }: { fx: Of<'trace'> }) {
   const v = useProgress('trace', fx.delay);
   const horizontal = fx.axis === 'h';
-  const motion = useMemo(() => {
-    const grow = v.interpolate({ inputRange: [0, 0.45, 1], outputRange: [0, 1, 1] });
+  const motion = useAnimatedStyle(() => {
+    const grow = interpolate(v.get(), [0, 0.45, 1], [0, 1, 1]);
     return {
-      transformOrigin: horizontal ? 'left' : 'top',
-      opacity: v.interpolate({ inputRange: [0, 0.45, 1], outputRange: [1, 0.95, 0] }),
+      opacity: interpolate(v.get(), [0, 0.45, 1], [1, 0.95, 0]),
       transform: [horizontal ? { scaleX: grow } : { scaleY: grow }],
     };
-  }, [v, horizontal]);
-  return <Animated.View style={[box(fx), styles.trace, fx.surge && styles.surgeTrace, motion]} />;
+  });
+  return (
+    <Animated.View
+      style={[
+        box(fx),
+        styles.trace,
+        fx.surge && styles.surgeTrace,
+        horizontal ? styles.fromLeft : styles.fromTop,
+        motion,
+      ]}
+    />
+  );
 }
 
 function Ring({ fx }: { fx: Of<'ring'> }) {
   const v = useProgress('ring', fx.delay);
-  const motion = useMemo(
-    () => ({
-      opacity: v.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }),
-      transform: [{ scale: v.interpolate({ inputRange: [0, 1], outputRange: [0.2, 5] }) }],
-    }),
-    [v],
-  );
+  const motion = useAnimatedStyle(() => ({
+    opacity: interpolate(v.get(), [0, 1], [1, 0]),
+    transform: [{ scale: interpolate(v.get(), [0, 1], [0.2, 5]) }],
+  }));
   return <Animated.View style={[box(fx), styles.ring, { borderRadius: fx.w }, motion]} />;
 }
 
 function Blast({ fx }: { fx: Of<'blast'> }) {
   const v = useProgress('blast', fx.delay);
-  const motion = useMemo(
-    () => ({
-      opacity: v.interpolate({ inputRange: [0, 0.25, 1], outputRange: [0, 0.95, 0] }),
-      transform: [{ scale: v.interpolate({ inputRange: [0, 0.25, 1], outputRange: [0.4, 1.05, 1.15] }) }],
-    }),
-    [v],
-  );
+  const motion = useAnimatedStyle(() => ({
+    opacity: interpolate(v.get(), [0, 0.25, 1], [0, 0.95, 0]),
+    transform: [{ scale: interpolate(v.get(), [0, 0.25, 1], [0.4, 1.05, 1.15]) }],
+  }));
   return <Animated.View style={[box(fx), styles.blast, motion]} />;
 }
 
@@ -94,21 +98,19 @@ function Pop({ fx, m }: { fx: Of<'points' | 'combo' | 'praise'>; m: Metrics }) {
   const v = useProgress(fx.kind);
   const fontSize = m.size * TEXT_SIZE[fx.kind];
   const praise = fx.kind === 'praise';
-  const motion = useMemo(
-    () =>
-      praise
-        ? {
-            opacity: v.interpolate({ inputRange: [0, 0.2, 0.8, 1], outputRange: [0, 1, 1, 0] }),
-            transform: [
-              { scale: v.interpolate({ inputRange: [0, 0.2, 0.35, 1], outputRange: [0.4, 1.1, 1, 1] }) },
-              { translateY: v.interpolate({ inputRange: [0.8, 1], outputRange: [0, -fontSize * 0.3] }) },
-            ],
-          }
-        : {
-            opacity: v.interpolate({ inputRange: [0, 0.15, 0.7, 1], outputRange: [0, 1, 1, 0] }),
-            transform: [{ translateY: v.interpolate({ inputRange: [0, 1], outputRange: [10, -40] }) }],
-          },
-    [v, praise, fontSize],
+  const motion = useAnimatedStyle(() =>
+    praise
+      ? {
+          opacity: interpolate(v.get(), [0, 0.2, 0.8, 1], [0, 1, 1, 0]),
+          transform: [
+            { scale: interpolate(v.get(), [0, 0.2, 0.35, 1], [0.4, 1.1, 1, 1]) },
+            { translateY: interpolate(v.get(), [0.8, 1], [0, -fontSize * 0.3]) },
+          ],
+        }
+      : {
+          opacity: interpolate(v.get(), [0, 0.15, 0.7, 1], [0, 1, 1, 0]),
+          transform: [{ translateY: interpolate(v.get(), [0, 1], [10, -40]) }],
+        },
   );
   const look =
     fx.kind === 'praise'
@@ -161,6 +163,8 @@ const styles = StyleSheet.create({
     backgroundColor: C.trace,
     boxShadow: glow(C.traceGlow, 10),
   },
+  fromLeft: { transformOrigin: 'left' },
+  fromTop: { transformOrigin: 'top' },
   surgeTrace: { backgroundColor: C.surgeTrace, boxShadow: glow(C.surge, 10) },
   ring: {
     borderWidth: 3,

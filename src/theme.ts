@@ -1,8 +1,4 @@
-import { Platform } from 'react-native';
-
 import { N } from './engine';
-
-export const NATIVE_DRIVER = Platform.OS !== 'web';
 
 export const C = {
   mask: '#0f5a3b',

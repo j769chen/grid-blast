@@ -1,37 +1,40 @@
 import { memo, useEffect } from 'react';
-import { Animated, Easing, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import Animated, {
+  cancelAnimation,
+  Easing,
+  interpolate,
+  makeMutable,
+  useAnimatedStyle,
+  withRepeat,
+  withSequence,
+  withTiming,
+} from 'react-native-reanimated';
 
 import type { CoreKind } from '../engine';
-import { C, glow as halo, NATIVE_DRIVER } from '../theme';
+import { C, glow as halo } from '../theme';
 
-const pulse = new Animated.Value(0);
-let pulsing = false;
+const pulse = makeMutable(0);
+const PULSE = { duration: 700, easing: Easing.inOut(Easing.ease) };
+let cores = 0;
 
-function startPulse() {
-  if (pulsing) return;
-  pulsing = true;
-  Animated.loop(
-    Animated.sequence([
-      Animated.timing(pulse, {
-        toValue: 1,
-        duration: 700,
-        easing: Easing.inOut(Easing.ease),
-        useNativeDriver: NATIVE_DRIVER,
-      }),
-      Animated.timing(pulse, {
-        toValue: 0,
-        duration: 700,
-        easing: Easing.inOut(Easing.ease),
-        useNativeDriver: NATIVE_DRIVER,
-      }),
-    ]),
-  ).start(() => {
-    pulsing = false;
-  });
+function usePulse() {
+  useEffect(() => {
+    cores += 1;
+    if (cores === 1) pulse.set(withRepeat(withSequence(withTiming(1, PULSE), withTiming(0, PULSE)), -1));
+    return () => {
+      cores -= 1;
+      if (cores === 0) cancelAnimation(pulse);
+    };
+  }, []);
 }
 
 function Core({ size, kind }: { size: number; kind: CoreKind }) {
-  useEffect(startPulse, []);
+  usePulse();
+  const dot = useAnimatedStyle(() => ({
+    opacity: interpolate(pulse.get(), [0, 1], [0.65, 1]),
+    transform: [{ scale: interpolate(pulse.get(), [0, 1], [0.85, 1.15]) }],
+  }));
   const box = size * 0.46;
   return (
     <View
@@ -42,14 +45,15 @@ function Core({ size, kind }: { size: number; kind: CoreKind }) {
       ]}
     >
       <Animated.View
-        style={{
-          width: box * 0.44,
-          height: box * 0.44,
-          borderRadius: box,
-          backgroundColor: kind === 'area' ? C.surge : '#fff',
-          opacity: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.65, 1] }),
-          transform: [{ scale: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.85, 1.15] }) }],
-        }}
+        style={[
+          {
+            width: box * 0.44,
+            height: box * 0.44,
+            borderRadius: box,
+            backgroundColor: kind === 'area' ? C.surge : '#fff',
+          },
+          dot,
+        ]}
       />
     </View>
   );
