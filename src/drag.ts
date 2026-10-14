@@ -1,6 +1,6 @@
 import type { SharedValue } from 'react-native-reanimated';
 
-import { BUFFER, circuitPath, N, type Lines, type Terminals } from './engine';
+import { BUFFER, circuitArc, circuitPath, N, type Lines, type Terminals } from './engine';
 
 export const DRAG_GAIN = 1.4;
 export const LIFT_CELLS = 1.93;
@@ -14,7 +14,7 @@ export interface Point {
 }
 
 export interface Clears extends Lines {
-  path: number[];
+  circuit: number[];
 }
 
 export interface Slot extends Point {
@@ -123,7 +123,7 @@ export function completedLines(grid: number[], g: SlotGeo | null, code: number, 
   'worklet';
   const rows: number[] = [];
   const cols: number[] = [];
-  if (!g || code === NO_CELL || grid.length !== N * N) return { rows, cols, path: [] };
+  if (!g || code === NO_CELL || grid.length !== N * N) return { rows, cols, circuit: [] };
   const r0 = Math.floor(code / N);
   const c0 = code % N;
   const placed = grid.slice();
@@ -138,10 +138,11 @@ export function completedLines(grid: number[], g: SlotGeo | null, code: number, 
     if (row) rows.push(i);
     if (col) cols.push(i);
   }
-  return { rows, cols, path: circuitPath(placed, t) ?? [] };
+  const path = circuitPath(placed, t) ?? [];
+  return { rows, cols, circuit: [...path, ...circuitArc(placed, path)] };
 }
 
 export function sameLines(a: Clears, b: Clears) {
   'worklet';
-  return a.rows.join() === b.rows.join() && a.cols.join() === b.cols.join() && a.path.join() === b.path.join();
+  return a.rows.join() === b.rows.join() && a.cols.join() === b.cols.join() && a.circuit.join() === b.circuit.join();
 }

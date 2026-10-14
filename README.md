@@ -36,8 +36,8 @@ npx expo start
 
 - A power input (+) sits beside one row on the left edge, and an output (−) above one column on the top edge.
 - Connect them with an unbroken chain of filled squares, touching edge to edge, to complete a circuit.
-- The shortest path lights up and clears, scoring 50 points per square. It counts as a clearing move for combos, and any cores on the path detonate.
-- The terminals then move to new spots that aren't already connected. While dragging, a placement that would complete a circuit highlights its path.
+- A spark runs from + to − along the shortest path. Then the path and every filled square touching it edge to edge clear together. It counts as a clearing move for combos, and any cores caught in the clear detonate.
+- The terminals then move to new spots that aren't already connected. While dragging, a placement that would complete a circuit highlights every square it would clear.
 
 ## Cores
 
@@ -53,7 +53,7 @@ npx expo start
 - Clearing n lines in one move scores 50·n·(n+1) (100, 300, 600, 1,000…), multiplied by the current combo.
 - Each extra cell destroyed by a core adds 40.
 - The combo grows with each clearing move and resets after 3 moves in a row without a clear.
-- Completing a circuit adds 50 per square on its path.
+- Completing a circuit adds 50 per square on its path and 40 per square touching the path.
 - Emptying the whole board adds 3,000.
 
 Peak score, the game in progress, and the vibration setting are saved on the device (AsyncStorage, which is `localStorage` on the web).

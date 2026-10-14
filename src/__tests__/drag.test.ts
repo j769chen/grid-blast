@@ -91,7 +91,7 @@ function drag(
     back: sv(back),
     shrink: sv([0.5, 0.5, 0.5, 0.3]),
     target: sv(NO_CELL),
-    lines: sv<Clears>({ rows: [], cols: [], path: [] }),
+    lines: sv<Clears>({ rows: [], cols: [], circuit: [] }),
     terminals: sv({ row: 4, col: 4 }),
     canStash: sv(canStash),
   };
@@ -145,10 +145,10 @@ describe('completedLines', () => {
     const grid = empty();
     for (let c = 2; c < N; c++) grid[c] = 1;
     for (let r = 2; r < N; r++) grid[r * N + 1] = 1;
-    expect(completedLines(grid, square, encodeCell(0, 0), far)).toEqual({ rows: [0], cols: [1], path: [] });
+    expect(completedLines(grid, square, encodeCell(0, 0), far)).toEqual({ rows: [0], cols: [1], circuit: [] });
   });
 
-  it('includes the circuit a placement would complete', () => {
+  it('includes the circuit path and every filled square touching it', () => {
     const grid = empty();
     [
       [4, 0],
@@ -156,15 +156,26 @@ describe('completedLines', () => {
       [0, 1],
       [0, 2],
       [0, 3],
+      [5, 0],
+      [6, 6],
     ].forEach(([r, c]) => (grid[cellIndex(r, c)] = 1));
-    const path = completedLines(grid, square, encodeCell(1, 0), { row: 4, col: 3 }).path;
-    expect(path[0]).toBe(cellIndex(4, 0));
-    expect(path.at(-1)).toBe(cellIndex(0, 3));
-    expect(path).toContain(cellIndex(1, 0));
+    const { circuit } = completedLines(grid, square, encodeCell(1, 0), { row: 4, col: 3 });
+    const path = [
+      [4, 0],
+      [3, 0],
+      [2, 0],
+      [1, 0],
+      [1, 1],
+      [0, 1],
+      [0, 2],
+      [0, 3],
+    ].map(([r, c]) => cellIndex(r, c));
+    expect(circuit.slice(0, path.length)).toEqual(path);
+    expect(new Set(circuit.slice(path.length))).toEqual(new Set([cellIndex(2, 1), cellIndex(5, 0)]));
   });
 
   it('is empty with no target, no part, or nothing completed', () => {
-    const none = { rows: [], cols: [], path: [] };
+    const none = { rows: [], cols: [], circuit: [] };
     expect(completedLines(empty(), square, NO_CELL, far)).toEqual(none);
     expect(completedLines(empty(), null, encodeCell(0, 0), far)).toEqual(none);
     expect(completedLines(empty(), square, encodeCell(3, 3), far)).toEqual(none);

@@ -1,4 +1,4 @@
-import { N, type PlaceResult } from './engine';
+import { N, neighbours, type PlaceResult } from './engine';
 import { fmt } from './format';
 import { PART_COLORS, span, type Metrics } from './theme';
 
@@ -16,6 +16,7 @@ interface Label {
   x: number;
   y: number;
   text: string;
+  delay?: number;
 }
 
 export type Fx =
@@ -23,23 +24,27 @@ export type Fx =
   | ({ kind: 'trace'; axis: 'h' | 'v'; surge: boolean } & Box)
   | ({ kind: 'ring' } & Box)
   | ({ kind: 'blast' } & Box)
-  | ({ kind: 'spark' } & Box)
+  | ({ kind: 'spark'; hold: number } & Box)
+  | { kind: 'bolt'; xs: number[]; ys: number[]; size: number; duration: number }
   | ({ kind: 'points' | 'combo' } & Label)
   | ({ kind: 'praise'; surge: boolean } & Label);
 
 export type FxSpec = Fx & { id: number };
 
-export const FX_DURATION: Record<Fx['kind'], number> = {
+export const FX_DURATION: Record<Exclude<Fx['kind'], 'bolt'>, number> = {
   burst: 500,
   trace: 450,
   ring: 600,
   blast: 550,
-  spark: 420,
+  spark: 300,
   points: 900,
   praise: 1100,
   combo: 900,
 };
-export const FX_LIFETIME = 1700;
+export const FX_LIFETIME = 2400;
+export const CIRCUIT_STEP = 35;
+
+export const circuitDelay = (circuit: number[]) => (circuit.length ? (circuit.length + 1) * CIRCUIT_STEP : 0);
 
 let fxId = 0;
 
@@ -47,6 +52,7 @@ export function buildFx(res: PlaceResult, m: Metrics): FxSpec[] {
   const items: FxSpec[] = [];
   if (!res.lineCount && !res.circuit.length) return items;
   const add = (it: Fx) => items.push({ ...it, id: ++fxId });
+  const boom = circuitDelay(res.circuit);
 
   res.lines.rows.forEach((r) =>
     add({ kind: 'trace', axis: 'h', surge: false, x: 0, y: r * m.pitch, w: m.field, h: m.cell }),
@@ -57,7 +63,7 @@ export function buildFx(res: PlaceResult, m: Metrics): FxSpec[] {
   res.surges.forEach(({ idx, kind }, n) => {
     const kr = Math.floor(idx / N);
     const kc = idx % N;
-    const delay = 120 + n * 120;
+    const delay = boom + 120 + n * 120;
     if (kind === 'line') {
       add({ kind: 'trace', axis: 'h', surge: true, x: 0, y: kr * m.pitch, w: m.field, h: m.cell, delay });
       add({ kind: 'trace', axis: 'v', surge: true, x: kc * m.pitch, y: 0, w: m.cell, h: m.field, delay });
@@ -71,17 +77,8 @@ export function buildFx(res: PlaceResult, m: Metrics): FxSpec[] {
     add({ kind: 'ring', x: kc * m.pitch, y: kr * m.pitch, w: m.cell, h: m.cell, delay });
   });
 
-  res.circuit.forEach((idx, k) =>
-    add({
-      kind: 'spark',
-      x: (idx % N) * m.pitch,
-      y: Math.floor(idx / N) * m.pitch,
-      w: m.cell,
-      h: m.cell,
-      delay: k * 35,
-    }),
-  );
-  const onPath = new Map(res.circuit.map((idx, k) => [idx, k]));
+  const onPath = new Set(res.circuit);
+  const nearPath = new Set(res.circuit.flatMap(neighbours));
 
   const { r: pr, c: pc } = res.center;
   res.cleared.forEach(({ idx, color }) => {
@@ -95,11 +92,47 @@ export function buildFx(res: PlaceResult, m: Metrics): FxSpec[] {
       w: m.cell,
       h: m.cell,
       color: PART_COLORS[color],
-      delay: onPath.has(idx) ? 150 + onPath.get(idx)! * 35 : res.lineSet.has(idx) ? dist * 28 : 260 + dist * 20,
+      delay: onPath.has(idx)
+        ? boom
+        : res.lineSet.has(idx)
+          ? dist * 28
+          : nearPath.has(idx)
+            ? boom + 70
+            : boom + 260 + dist * 20,
     });
   });
 
-  add({ kind: 'points', x: pc * m.pitch, y: pr * m.pitch, text: `+${fmt(res.gained)}` });
+  if (res.circuit.length) {
+    const xs = res.circuit.map((idx) => (idx % N) * m.pitch + m.cell / 2);
+    const ys = res.circuit.map((idx) => Math.floor(idx / N) * m.pitch + m.cell / 2);
+    xs.unshift(-m.gut / 2);
+    ys.unshift(ys[0]);
+    xs.push(xs[xs.length - 1]);
+    ys.push(-m.gut / 2);
+    res.circuit.forEach((idx, k) => {
+      const delay = (k + 1) * CIRCUIT_STEP;
+      add({
+        kind: 'spark',
+        x: (idx % N) * m.pitch,
+        y: Math.floor(idx / N) * m.pitch,
+        w: m.cell,
+        h: m.cell,
+        delay,
+        hold: boom - delay + 60,
+      });
+    });
+    add({ kind: 'bolt', xs, ys, size: m.cell * 0.5, duration: boom });
+    add({
+      kind: 'ring',
+      x: xs[xs.length - 1] - m.cell / 2,
+      y: -m.gut / 2 - m.cell / 2,
+      w: m.cell,
+      h: m.cell,
+      delay: boom,
+    });
+  }
+
+  add({ kind: 'points', x: pc * m.pitch, y: pr * m.pitch, text: `+${fmt(res.gained)}`, delay: boom });
   const surges = res.surges.length;
   const headline = res.perfect
     ? 'Board clear!'
@@ -120,9 +153,10 @@ export function buildFx(res: PlaceResult, m: Metrics): FxSpec[] {
       y,
       text: headline,
       surge: surges > 0 && !res.perfect && !res.circuit.length,
+      delay: boom,
     });
     y += m.pitch * 1.2;
   }
-  if (res.state.combo >= 2) add({ kind: 'combo', x: m.pitch * 4, y, text: `Combo ${res.state.combo}` });
+  if (res.state.combo >= 2) add({ kind: 'combo', x: m.pitch * 4, y, text: `Combo ${res.state.combo}`, delay: boom });
   return items;
 }

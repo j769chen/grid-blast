@@ -213,6 +213,18 @@ export function blastCells(k: number, kind: CoreKind) {
   return out;
 }
 
+export function neighbours(k: number) {
+  'worklet';
+  const r = Math.floor(k / N);
+  const c = k % N;
+  const out: number[] = [];
+  if (r > 0) out.push(k - N);
+  if (r < N - 1) out.push(k + N);
+  if (c > 0) out.push(k - 1);
+  if (c < N - 1) out.push(k + 1);
+  return out;
+}
+
 export function circuitPath(grid: number[], t: Terminals): number[] | null {
   'worklet';
   const start = t.row * N;
@@ -228,16 +240,24 @@ export function circuitPath(grid: number[], t: Terminals): number[] | null {
       for (let x = k; x >= 0; x = prev[x]) path.push(x);
       return path.reverse();
     }
-    const r = Math.floor(k / N);
-    const c = k % N;
-    const next = [r > 0 ? k - N : -1, r < N - 1 ? k + N : -1, c > 0 ? k - 1 : -1, c < N - 1 ? k + 1 : -1];
-    for (const x of next) {
-      if (x < 0 || grid[x] < 0 || prev[x] !== -2) continue;
+    for (const x of neighbours(k)) {
+      if (grid[x] < 0 || prev[x] !== -2) continue;
       prev[x] = k;
       queue.push(x);
     }
   }
   return null;
+}
+
+export function circuitArc(grid: number[], path: number[]): number[] {
+  'worklet';
+  const out: number[] = [];
+  for (const k of path) {
+    for (const x of neighbours(k)) {
+      if (grid[x] >= 0 && !path.includes(x) && !out.includes(x)) out.push(x);
+    }
+  }
+  return out;
 }
 
 export function pickTerminals(grid: number[], rand: Rand = Math.random, avoid?: Terminals): Terminals {
@@ -362,7 +382,7 @@ export function placePiece(
   let perfect = false;
 
   if (base.size) {
-    const hit = new Set(base);
+    const hit = new Set([...base, ...circuitArc(grid, circuit)]);
     const seen = new Set<number>();
     const queue = [...hit].filter((k) => cores[k]);
     while (queue.length) {
