@@ -37,7 +37,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
 const styles = StyleSheet.create({
   root: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10, padding: 24, backgroundColor: C.maskDeep },
   title: { fontFamily: F.bold, fontSize: 22, color: C.silk, textAlign: 'center' },
-  sub: { fontFamily: F.medium, fontSize: 15, color: C.silkDim, textAlign: 'center' },
+  sub: { fontFamily: F.medium, fontSize: 15, color: C.silkLabel, textAlign: 'center' },
   btn: { marginTop: 12, paddingVertical: 13, paddingHorizontal: 30, borderRadius: 6, backgroundColor: C.pad },
   btnText: { fontFamily: F.bold, fontSize: 18, letterSpacing: 1, textTransform: 'uppercase', color: C.ink },
 });

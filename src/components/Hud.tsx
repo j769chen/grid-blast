@@ -106,7 +106,7 @@ const styles = StyleSheet.create({
   side: { flex: 1, gap: 2 },
   tools: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8 },
   center: { alignItems: 'center', gap: 6, paddingHorizontal: 6 },
-  silk: { fontFamily: F.mono, fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', color: C.silkDim },
+  silk: { fontFamily: F.mono, fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', color: C.silkLabel },
   best: { fontFamily: F.bold, fontSize: 20, color: C.pad, fontVariant: ['tabular-nums'] },
   score: {
     fontFamily: F.bold,
