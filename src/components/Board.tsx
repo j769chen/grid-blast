@@ -1,10 +1,10 @@
 import { memo, type Ref } from 'react';
-import { StyleSheet, Text, View, type ViewStyle } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import type { DragShared } from '../drag';
 import { COL_LABELS, describeCell, ROW_LABELS } from '../describe';
-import { fits, N, type CoreKind, type Piece, type Terminals } from '../engine';
-import { C, F, glow, PART_COLORS, type Metrics } from '../theme';
+import { fits, N, portCell, type CoreKind, type Piece, type Port, type Terminals } from '../engine';
+import { C, F, glow, PART_COLORS, portCentre, type Metrics } from '../theme';
 import type { FxSpec } from '../fx';
 import { FxLayer } from './Fx';
 import { Led, Pad } from './Led';
@@ -32,9 +32,18 @@ interface BoardProps {
 
 const PLACE = [{ name: 'activate' as const, label: 'Place here' }];
 
-function Terminal({ sign, size, style }: { sign: string; size: number; style: ViewStyle }) {
+function Terminal({ sign, port, m }: { sign: string; port: Port; m: Metrics }) {
+  const { x, y } = portCentre(port, m);
+  const origin = m.pad + m.gut;
+  const size = m.gut * 0.8;
   return (
-    <View aria-hidden style={[styles.terminal, style]}>
+    <View
+      aria-hidden
+      style={[
+        styles.terminal,
+        { left: origin + x - m.gut / 2, top: origin + y - m.gut / 2, width: m.gut, height: m.gut },
+      ]}
+    >
       <View style={[styles.port, { width: size, height: size, borderRadius: size }]}>
         <Text style={[styles.sign, { fontSize: size * 0.75, lineHeight: size }]}>{sign}</Text>
       </View>
@@ -58,6 +67,10 @@ export const Board = memo(function Board({
 }: BoardProps) {
   const origin = m.pad + m.gut;
   const labelSize = m.size * 0.03;
+  const plusCell = portCell(terminals.plus);
+  const minusCell = portCell(terminals.minus);
+  const taken = (side: Port['side'], at: number) =>
+    [terminals.plus, terminals.minus].some((p) => p.side === side && p.at === at);
 
   const cells = [];
   for (let i = 0; i < N * N; i++) {
@@ -76,11 +89,7 @@ export const Board = memo(function Board({
           c,
           grid[i],
           cores[i],
-          c === 0 && r === terminals.row
-            ? 'next to power in'
-            : r === 0 && c === terminals.col
-              ? 'next to power out'
-              : '',
+          i === plusCell ? 'next to power in' : i === minusCell ? 'next to power out' : '',
         )}
         accessibilityRole={open ? 'button' : undefined}
         accessibilityHint={
@@ -116,14 +125,7 @@ export const Board = memo(function Board({
           OC-1
         </Text>
         {COL_LABELS.map((label, c) =>
-          c === terminals.col ? (
-            <Terminal
-              key={label}
-              sign="−"
-              size={m.gut * 0.8}
-              style={{ left: origin + c * m.pitch, top: m.pad, width: m.cell, height: m.gut }}
-            />
-          ) : (
+          taken('top', c) ? null : (
             <Text
               aria-hidden
               key={label}
@@ -144,14 +146,7 @@ export const Board = memo(function Board({
           ),
         )}
         {ROW_LABELS.map((label, r) =>
-          r === terminals.row ? (
-            <Terminal
-              key={label}
-              sign="+"
-              size={m.gut * 0.8}
-              style={{ left: m.pad, top: origin + r * m.pitch, width: m.gut, height: m.cell }}
-            />
-          ) : (
+          taken('left', r) ? null : (
             <Text
               aria-hidden
               key={label}
@@ -171,6 +166,8 @@ export const Board = memo(function Board({
             </Text>
           ),
         )}
+        <Terminal sign="+" port={terminals.plus} m={m} />
+        <Terminal sign="−" port={terminals.minus} m={m} />
         <View
           ref={fieldRef}
           style={{ position: 'absolute', left: origin, top: origin, width: m.field, height: m.field }}

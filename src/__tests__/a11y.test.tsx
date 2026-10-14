@@ -7,7 +7,7 @@ import { Board } from '../components/Board';
 import { Tray } from '../components/Tray';
 import { describeCell, describePiece } from '../describe';
 import { NO_CELL, OFFSCREEN, type Clears, type DragShared, type Point, type SlotGeo } from '../drag';
-import { cellIndex, makePiece, N, type CoreKind, type Piece } from '../engine';
+import { cellIndex, makePiece, N, type CoreKind, type Piece, type Terminals } from '../engine';
 import { metrics } from '../theme';
 
 const m = metrics(390, 800);
@@ -30,12 +30,15 @@ function drag(): DragShared {
     shrink: makeMutable([0.5, 0.5, 0.5, 0.3]),
     target: makeMutable(NO_CELL),
     lines: makeMutable<Clears>({ rows: [], cols: [], circuit: [] }),
-    terminals: makeMutable({ row: 4, col: 4 }),
+    terminals: makeMutable<Terminals>({ plus: { side: 'left', at: 4 }, minus: { side: 'top', at: 4 } }),
     canStash: makeMutable(true),
   };
 }
 
-async function board(placing: Piece | null) {
+async function board(
+  placing: Piece | null,
+  terminals: Terminals = { plus: { side: 'left', at: 4 }, minus: { side: 'top', at: 2 } },
+) {
   const onPlaceAt = jest.fn();
   const grid = Array<number>(N * N).fill(-1);
   const cores = Array<CoreKind | null>(N * N).fill(null);
@@ -54,7 +57,7 @@ async function board(placing: Piece | null) {
       drag={drag()}
       placing={placing}
       onPlaceAt={onPlaceAt}
-      terminals={{ row: 4, col: 2 }}
+      terminals={terminals}
     />,
   );
   return onPlaceAt;
@@ -78,6 +81,12 @@ describe('Board', () => {
     expect(screen.getByLabelText('E1, empty, next to power in')).toBeTruthy();
     expect(screen.getByLabelText('A3, empty, next to power out')).toBeTruthy();
     expect(screen.getByLabelText('A1, empty').props.accessibilityActions).toBeUndefined();
+  });
+
+  it('marks the squares next to terminals on the right and bottom edges', async () => {
+    await board(null, { plus: { side: 'right', at: 4 }, minus: { side: 'bottom', at: 2 } });
+    expect(screen.getByLabelText('E8, empty, next to power in')).toBeTruthy();
+    expect(screen.getByLabelText('H3, empty, next to power out')).toBeTruthy();
   });
 
   it('places the chosen part on a square where it fits', async () => {

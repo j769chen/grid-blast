@@ -1,6 +1,6 @@
 import { N, neighbours, type PlaceResult } from './engine';
 import { fmt } from './format';
-import { PART_COLORS, span, type Metrics } from './theme';
+import { PART_COLORS, portCentre, span, type Metrics } from './theme';
 
 const PRAISE = ['', '', 'Double!', 'Triple!', 'Quad!', 'Overload!', 'Meltdown!'];
 
@@ -105,10 +105,12 @@ export function buildFx(res: PlaceResult, m: Metrics): FxSpec[] {
   if (res.circuit.length) {
     const xs = res.circuit.map((idx) => (idx % N) * m.pitch + m.cell / 2);
     const ys = res.circuit.map((idx) => Math.floor(idx / N) * m.pitch + m.cell / 2);
-    xs.unshift(-m.gut / 2);
-    ys.unshift(ys[0]);
-    xs.push(xs[xs.length - 1]);
-    ys.push(-m.gut / 2);
+    const start = portCentre(res.wired.plus, m);
+    const end = portCentre(res.wired.minus, m);
+    xs.unshift(start.x);
+    ys.unshift(start.y);
+    xs.push(end.x);
+    ys.push(end.y);
     res.circuit.forEach((idx, k) => {
       const delay = (k + 1) * CIRCUIT_STEP;
       add({
@@ -124,8 +126,8 @@ export function buildFx(res: PlaceResult, m: Metrics): FxSpec[] {
     add({ kind: 'bolt', xs, ys, size: m.cell * 0.5, duration: boom });
     add({
       kind: 'ring',
-      x: xs[xs.length - 1] - m.cell / 2,
-      y: -m.gut / 2 - m.cell / 2,
+      x: end.x - m.cell / 2,
+      y: end.y - m.cell / 2,
       w: m.cell,
       h: m.cell,
       delay: boom,

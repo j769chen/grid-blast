@@ -78,7 +78,7 @@ function Trace({ fx }: { fx: Of<'trace'> }) {
 function Ring({ fx }: { fx: Of<'ring'> }) {
   const v = useProgress(FX_DURATION.ring, fx.delay);
   const motion = useAnimatedStyle(() => ({
-    opacity: interpolate(v.get(), [0, 1], [1, 0]),
+    opacity: interpolate(v.get(), [0, 0.02, 1], [0, 1, 0]),
     transform: [{ scale: interpolate(v.get(), [0, 1], [0.2, 5]) }],
   }));
   return <Animated.View style={[box(fx), styles.ring, { borderRadius: fx.w }, motion]} />;

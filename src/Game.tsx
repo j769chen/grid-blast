@@ -8,7 +8,18 @@ import { GameOver } from './components/GameOver';
 import { GhostLayer } from './components/Ghost';
 import { Hud } from './components/Hud';
 import { Tray, type SlotAnim } from './components/Tray';
-import { anyMove, BUFFER, newGame, parts, placePiece, SOURCES, spinPiece, stashPiece, type GameState } from './engine';
+import {
+  anyMove,
+  BUFFER,
+  newGame,
+  parts,
+  placePiece,
+  SOURCES,
+  spinPiece,
+  stashPiece,
+  type GameState,
+  type Terminals,
+} from './engine';
 import { fmt } from './format';
 import { buildFx, circuitDelay, FX_LIFETIME, type FxSpec } from './fx';
 import { buzz, type Buzz } from './haptics';
@@ -34,6 +45,7 @@ export default function Game() {
   );
   const [armed, setArmed] = useState(false);
   const [chosen, setChosen] = useState<number | null>(null);
+  const [wired, setWired] = useState<Terminals | null>(null);
 
   const stateRef = useRef<GameState | null>(null);
   const mRef = useRef(m);
@@ -65,6 +77,7 @@ export default function Game() {
       commit(newGame(best));
       setOverVisible(false);
       setFx([]);
+      setWired(null);
       dealAll();
     },
     [commit, dealAll],
@@ -129,7 +142,11 @@ export default function Game() {
       const boom = circuitDelay(res.circuit);
       if (boom) {
         haptic('light');
-        setTimeout(() => haptic(kind), boom);
+        setWired(res.wired);
+        setTimeout(() => {
+          haptic(kind);
+          setWired((w) => (w === res.wired ? null : w));
+        }, boom);
       } else {
         haptic(kind);
       }
@@ -260,7 +277,7 @@ export default function Game() {
           drag={drag}
           placing={selected === null ? null : sources[selected]}
           onPlaceAt={placeAt}
-          terminals={state.terminals}
+          terminals={wired ?? state.terminals}
         />
         <Tray
           tray={state.tray}

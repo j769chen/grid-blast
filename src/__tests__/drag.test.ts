@@ -18,7 +18,7 @@ import {
   type Point,
   type SlotGeo,
 } from '../drag';
-import { cellIndex, N } from '../engine';
+import { cellIndex, N, type Terminals } from '../engine';
 
 const empty = () => Array<number>(N * N).fill(-1);
 const square: SlotGeo = { w: 0, h: 0, pw: 2, ph: 2, cells: [0, 0, 0, 1, 1, 0, 1, 1] };
@@ -92,7 +92,7 @@ function drag(
     shrink: sv([0.5, 0.5, 0.5, 0.3]),
     target: sv(NO_CELL),
     lines: sv<Clears>({ rows: [], cols: [], circuit: [] }),
-    terminals: sv({ row: 4, col: 4 }),
+    terminals: sv<Terminals>({ plus: { side: 'left', at: 4 }, minus: { side: 'top', at: 4 } }),
     canStash: sv(canStash),
   };
 }
@@ -139,7 +139,7 @@ describe('returnFrame', () => {
 });
 
 describe('completedLines', () => {
-  const far = { row: 7, col: 7 };
+  const far: Terminals = { plus: { side: 'left', at: 7 }, minus: { side: 'top', at: 7 } };
 
   it('lists the rows and columns a placement would complete', () => {
     const grid = empty();
@@ -159,7 +159,10 @@ describe('completedLines', () => {
       [5, 0],
       [6, 6],
     ].forEach(([r, c]) => (grid[cellIndex(r, c)] = 1));
-    const { circuit } = completedLines(grid, square, encodeCell(1, 0), { row: 4, col: 3 });
+    const { circuit } = completedLines(grid, square, encodeCell(1, 0), {
+      plus: { side: 'left', at: 4 },
+      minus: { side: 'top', at: 3 },
+    });
     const path = [
       [4, 0],
       [3, 0],

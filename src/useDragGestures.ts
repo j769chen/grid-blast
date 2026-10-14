@@ -10,6 +10,7 @@ import {
   decodeCell,
   ghostFrame,
   NO_CELL,
+  NO_TERMINALS,
   overBuffer,
   sameLines,
   targetCell,
@@ -74,7 +75,7 @@ export function useDragGestures({ state, stateRef, m, onPlace, onStash, haptic }
   const shrink = useSharedValue(SLOTS.map(() => (m.mini + m.miniGap) / m.pitch));
   const target = useSharedValue(NO_CELL);
   const lines = useSharedValue<Clears>({ rows: [], cols: [], circuit: [] });
-  const terminals = useSharedValue<Terminals>({ row: -1, col: -1 });
+  const terminals = useSharedValue<Terminals>(NO_TERMINALS);
   const enabled = useSharedValue(false);
   const moved = useSharedValue(false);
   const mouse = useSharedValue(false);
@@ -125,7 +126,7 @@ export function useDragGestures({ state, stateRef, m, onPlace, onStash, haptic }
       ),
     );
     grid.set(state?.grid ?? []);
-    terminals.set(state?.terminals ?? { row: -1, col: -1 });
+    terminals.set(state?.terminals ?? NO_TERMINALS);
     pitch.set(m.pitch);
     shrink.set(SLOTS.map((k) => ((m.mini + m.miniGap) / m.pitch) * (k === BUFFER ? BUFFER_SCALE : 1)));
     enabled.set(!!state && !state.over);

@@ -7,6 +7,7 @@ export const LIFT_CELLS = 1.93;
 export const SNAP_RADIUS = 1;
 export const NO_CELL = -1;
 export const OFFSCREEN = -9999;
+export const NO_TERMINALS: Terminals = { plus: { side: 'left', at: 0 }, minus: { side: 'left', at: 0 } };
 
 export interface Point {
   x: number;

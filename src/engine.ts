@@ -28,9 +28,16 @@ export interface Surge {
   kind: CoreKind;
 }
 
+export type Side = 'left' | 'right' | 'top' | 'bottom';
+
+export interface Port {
+  side: Side;
+  at: number;
+}
+
 export interface Terminals {
-  row: number;
-  col: number;
+  plus: Port;
+  minus: Port;
 }
 
 export interface GameState {
@@ -61,6 +68,7 @@ export interface PlaceResult {
   cleared: { idx: number; color: number }[];
   surges: Surge[];
   circuit: number[];
+  wired: Terminals;
   perfect: boolean;
   dealt: boolean;
   center: { r: number; c: number };
@@ -225,10 +233,20 @@ export function neighbours(k: number) {
   return out;
 }
 
+export const SIDES: Side[] = ['left', 'right', 'top', 'bottom'];
+
+export function portCell({ side, at }: Port) {
+  'worklet';
+  if (side === 'left') return at * N;
+  if (side === 'right') return at * N + N - 1;
+  if (side === 'top') return at;
+  return (N - 1) * N + at;
+}
+
 export function circuitPath(grid: number[], t: Terminals): number[] | null {
   'worklet';
-  const start = t.row * N;
-  const goal = t.col;
+  const start = portCell(t.plus);
+  const goal = portCell(t.minus);
   if (grid[start] < 0 || grid[goal] < 0) return null;
   const prev: number[] = new Array(N * N).fill(-2);
   prev[start] = -1;
@@ -260,14 +278,26 @@ export function circuitArc(grid: number[], path: number[]): number[] {
   return out;
 }
 
+const PORTS: Port[] = SIDES.flatMap((side) => Array.from({ length: N }, (_, at) => ({ side, at })));
+
+export function shortestCircuit({ plus, minus }: Terminals) {
+  const a = portCell(plus);
+  const b = portCell(minus);
+  return Math.abs(Math.floor(a / N) - Math.floor(b / N)) + Math.abs((a % N) - (b % N)) + 1;
+}
+
+const PAIRS: Terminals[] = PORTS.flatMap((plus) =>
+  PORTS.map((minus) => ({ plus, minus })).filter((t) => shortestCircuit(t) >= MIN_CIRCUIT),
+);
+
+const samePort = (a: Port, b: Port) => a.side === b.side && a.at === b.at;
+
 export function pickTerminals(grid: number[], rand: Rand = Math.random, avoid?: Terminals): Terminals {
-  const all: Terminals[] = [];
-  for (let row = 0; row < N; row++) {
-    for (let col = 0; col < N; col++) if (row + col + 1 >= MIN_CIRCUIT) all.push({ row, col });
-  }
-  const open = all.filter((t) => !circuitPath(grid, t));
-  const moved = open.filter((t) => !avoid || (t.row !== avoid.row && t.col !== avoid.col));
-  const pool = moved.length ? moved : open.length ? open : all;
+  const open = PAIRS.filter((t) => !circuitPath(grid, t));
+  const moved = avoid
+    ? open.filter((t) => [t.plus, t.minus].every((p) => !samePort(p, avoid.plus) && !samePort(p, avoid.minus)))
+    : open;
+  const pool = moved.length ? moved : open.length ? open : PAIRS;
   return pool[Math.floor(rand() * pool.length)];
 }
 
@@ -445,6 +475,7 @@ export function placePiece(
     cleared,
     surges,
     circuit,
+    wired: s.terminals,
     perfect,
     dealt,
     center: { r: r + p.h / 2, c: c + p.w / 2 },
@@ -455,6 +486,12 @@ const isInt = (v: unknown, lo: number, hi: number): v is number =>
   typeof v === 'number' && Number.isInteger(v) && v >= lo && v <= hi;
 
 const isCoreKind = (v: unknown): v is CoreKind => v === 'line' || v === 'area';
+
+function isPort(x: unknown): x is Port {
+  if (!x || typeof x !== 'object') return false;
+  const p = x as Record<string, unknown>;
+  return SIDES.includes(p.side as Side) && isInt(p.at, 0, N - 1);
+}
 
 function isPiece(x: unknown): x is Piece {
   if (!x || typeof x !== 'object') return false;
@@ -490,7 +527,7 @@ export function isGameState(x: unknown): x is GameState {
     typeof g.over === 'boolean' &&
     !!t &&
     typeof t === 'object' &&
-    isInt(t.row, 0, N - 1) &&
-    isInt(t.col, 0, N - 1)
+    isPort(t.plus) &&
+    isPort(t.minus)
   );
 }
