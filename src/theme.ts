@@ -74,3 +74,12 @@ export function metrics(width: number, height: number): Metrics {
 }
 
 export const span = (cells: number, m: Metrics) => cells * m.pitch - m.gap;
+
+export const glow = (color: string, radius: number, opacity = 1) =>
+  `0 0 ${radius * 2}px ${color}${
+    opacity < 1
+      ? Math.round(opacity * 255)
+          .toString(16)
+          .padStart(2, '0')
+      : ''
+  }`;

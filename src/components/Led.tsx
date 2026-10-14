@@ -2,7 +2,7 @@ import { memo, useEffect } from 'react';
 import { Animated, Easing, StyleSheet, View } from 'react-native';
 
 import type { CoreKind } from '../engine';
-import { C, NATIVE_DRIVER } from '../theme';
+import { C, glow as halo, NATIVE_DRIVER } from '../theme';
 
 const pulse = new Animated.Value(0);
 let pulsing = false;
@@ -71,12 +71,7 @@ export const Led = memo(function Led({ color, size, b, glow = 0, core = null, di
       style={[
         styles.led,
         { width: size, height: size, backgroundColor: color, opacity: dim ? 0.45 : 1 },
-        glow > 0 && {
-          shadowColor: color,
-          shadowOpacity: 0.7,
-          shadowRadius: glow,
-          shadowOffset: { width: 0, height: 0 },
-        },
+        glow > 0 && { boxShadow: halo(color, glow, 0.7) },
       ]}
     >
       <View style={[styles.shade, { height: b * 1.3 }]} />
