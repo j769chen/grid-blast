@@ -65,6 +65,15 @@ describe('version 2 saves', () => {
   });
 });
 
+describe('version 3 saves', () => {
+  it('gain an empty buffer', () => {
+    const { buffer: _b, stashed: _s, ...old } = game();
+    const parsed = parseSave(JSON.stringify({ v: 3, game: old, startBest: 0 }))!;
+    expect(parsed.game.buffer).toBeNull();
+    expect(parsed.game.stashed).toBe(false);
+  });
+});
+
 describe('loadSaved and saveGame', () => {
   it('writes a versioned game and only raises the stored best', async () => {
     await AsyncStorage.setItem('overclock.best', '500');

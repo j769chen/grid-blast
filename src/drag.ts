@@ -1,6 +1,6 @@
 import type { SharedValue } from 'react-native-reanimated';
 
-import { circuitPath, N, type Lines, type Terminals } from './engine';
+import { BUFFER, circuitPath, N, type Lines, type Terminals } from './engine';
 
 export const DRAG_GAIN = 1.4;
 export const LIFT_CELLS = 1.93;
@@ -41,10 +41,19 @@ export interface DragShared {
   slots: SharedValue<Slot[]>;
   missFrom: SharedValue<Point[]>;
   back: SharedValue<number[]>;
-  shrink: SharedValue<number>;
+  shrink: SharedValue<number[]>;
   target: SharedValue<number>;
   lines: SharedValue<Clears>;
   terminals: SharedValue<Terminals>;
+  canStash: SharedValue<boolean>;
+}
+
+export function overBuffer(d: DragShared, i: number) {
+  'worklet';
+  if (i === BUFFER || d.slot.get() < 0 || !d.canStash.get()) return false;
+  const t = d.touch.get();
+  const b = d.slots.get()[BUFFER];
+  return t.x >= b.x && t.x <= b.x + b.w && t.y >= b.y && t.y <= b.y + b.h;
 }
 
 export function returnFrame(d: DragShared, i: number) {
@@ -56,7 +65,7 @@ export function returnFrame(d: DragShared, i: number) {
   const s = d.slots.get()[i];
   const x = s.x + s.w / 2 - g.w / 2;
   const y = s.y + s.h / 2 - g.h / 2;
-  return { x: from.x + (x - from.x) * t, y: from.y + (y - from.y) * t, scale: 1 + (d.shrink.get() - 1) * t };
+  return { x: from.x + (x - from.x) * t, y: from.y + (y - from.y) * t, scale: 1 + (d.shrink.get()[i] - 1) * t };
 }
 
 export function ghostFrame(d: DragShared, i: number): Point {

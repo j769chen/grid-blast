@@ -11,6 +11,7 @@ import {
   LIFT_CELLS,
   nearestCell,
   NO_CELL,
+  overBuffer,
   targetCell,
   type Clears,
   type DragShared,
@@ -61,9 +62,15 @@ describe('nearestCell radius', () => {
 
 const sv = <T>(value: T) => ({ get: () => value }) as unknown as SharedValue<T>;
 
-function drag(touch: { x: number; y: number }, mouse: boolean, back = [1, 1, 1]): DragShared {
+function drag(
+  touch: { x: number; y: number },
+  mouse: boolean,
+  back = [1, 1, 1, 1],
+  slot = 0,
+  canStash = true,
+): DragShared {
   return {
-    slot: sv(0),
+    slot: sv(slot),
     touch: sv(touch),
     origin: sv({ x: 100, y: 500 }),
     pitch: sv(40),
@@ -74,6 +81,7 @@ function drag(touch: { x: number; y: number }, mouse: boolean, back = [1, 1, 1])
       { x: 20, y: 600, w: 120, h: 100 },
       { x: 150, y: 600, w: 120, h: 100 },
       { x: 280, y: 600, w: 120, h: 100 },
+      { x: 20, y: 760, w: 120, h: 70 },
     ]),
     missFrom: sv([
       { x: 200, y: 300 },
@@ -81,10 +89,11 @@ function drag(touch: { x: number; y: number }, mouse: boolean, back = [1, 1, 1])
       { x: 0, y: 0 },
     ]),
     back: sv(back),
-    shrink: sv(0.5),
+    shrink: sv([0.5, 0.5, 0.5, 0.3]),
     target: sv(NO_CELL),
     lines: sv<Clears>({ rows: [], cols: [], path: [] }),
     terminals: sv({ row: 4, col: 4 }),
+    canStash: sv(canStash),
   };
 }
 
@@ -159,5 +168,18 @@ describe('completedLines', () => {
     expect(completedLines(empty(), square, NO_CELL, far)).toEqual(none);
     expect(completedLines(empty(), null, encodeCell(0, 0), far)).toEqual(none);
     expect(completedLines(empty(), square, encodeCell(3, 3), far)).toEqual(none);
+  });
+});
+
+describe('overBuffer', () => {
+  it('is true when the finger is over the buffer while dragging a tray part', () => {
+    expect(overBuffer(drag({ x: 60, y: 790 }, false), 0)).toBe(true);
+    expect(overBuffer(drag({ x: 60, y: 700 }, false), 0)).toBe(false);
+  });
+
+  it('ignores the buffer part itself, idle fingers, and a used buffer', () => {
+    expect(overBuffer(drag({ x: 60, y: 790 }, false, [1, 1, 1, 1], 3), 3)).toBe(false);
+    expect(overBuffer(drag({ x: 60, y: 790 }, false, [1, 1, 1, 1], -1), 0)).toBe(false);
+    expect(overBuffer(drag({ x: 60, y: 790 }, false, [1, 1, 1, 1], 0, false), 0)).toBe(false);
   });
 });

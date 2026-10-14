@@ -2,6 +2,7 @@ import { describe, expect, it } from '@jest/globals';
 
 import {
   anyMove,
+  BUFFER,
   blastCells,
   cellIndex,
   circuitPath,
@@ -16,6 +17,7 @@ import {
   rotate,
   SHAPES,
   spinPiece,
+  stashPiece,
   turnsToFit,
   type GameState,
   type Piece,
@@ -52,6 +54,8 @@ function blank(tray: (Piece | null)[], over: Partial<GameState> = {}): GameState
     cores: Array(N * N).fill(null),
     terminals: { row: 3, col: 3 },
     tray,
+    buffer: null,
+    stashed: false,
     score: 0,
     best: 0,
     combo: 0,
@@ -243,6 +247,8 @@ describe('isGameState', () => {
     expect(isGameState(tweak((s) => (s.tray as unknown[]).pop()))).toBe(false);
     expect(isGameState(tweak((s) => ((s.cores as unknown[])[0] = true)))).toBe(false);
     expect(isGameState(tweak((s) => delete s.terminals))).toBe(false);
+    expect(isGameState(tweak((s) => (s.buffer = { w: 1 })))).toBe(false);
+    expect(isGameState(tweak((s) => delete s.stashed))).toBe(false);
     expect(isGameState(tweak((s) => (s.terminals = { row: 9, col: 3 })))).toBe(false);
     expect(isGameState(tweak((s) => ((s.tray as Piece[])[0].coreKind = 'huge' as Piece['coreKind'])))).toBe(false);
   });
@@ -458,5 +464,60 @@ describe('circuits', () => {
     }
     const s = wired();
     expect(circuitPath(s.grid, pickTerminals(s.grid, seeded(5)))).toBeNull();
+  });
+});
+
+describe('buffer', () => {
+  it('stores a part, once per set', () => {
+    const s = blank([single(), bar(2), bar(3)]);
+    const next = stashPiece(s, 1, seeded())!;
+    expect(next.buffer).toEqual(bar(2));
+    expect(next.tray).toEqual([single(), null, bar(3)]);
+    expect(next.stashed).toBe(true);
+    expect(stashPiece(next, 0, seeded())).toBeNull();
+  });
+
+  it('swaps with a part already stored', () => {
+    const s = blank([single(), bar(2), bar(3)], { buffer: bar(4) });
+    const next = stashPiece(s, 2, seeded())!;
+    expect(next.buffer).toEqual(bar(3));
+    expect(next.tray[2]).toEqual(bar(4));
+  });
+
+  it('deals a new set when the last part is stored, which resets the limit', () => {
+    const s = blank([null, null, bar(3)]);
+    const next = stashPiece(s, 2, seeded())!;
+    expect(next.buffer).toEqual(bar(3));
+    expect(next.tray.every((p) => p !== null)).toBe(true);
+    expect(next.stashed).toBe(false);
+  });
+
+  it('places from the buffer without dealing or resetting the limit', () => {
+    const s = blank([single(), null, null], { buffer: bar(2), stashed: true });
+    const res = placePiece(s, BUFFER, 4, 4, seeded())!;
+    expect(res.state.buffer).toBeNull();
+    expect(res.state.tray).toEqual([single(), null, null]);
+    expect(res.dealt).toBe(false);
+    expect(res.state.stashed).toBe(true);
+  });
+
+  it('resets the limit when a new set is dealt', () => {
+    const s = blank([single(), null, null], { buffer: bar(2), stashed: true });
+    const res = placePiece(s, 0, 4, 4, seeded())!;
+    expect(res.dealt).toBe(true);
+    expect(res.state.stashed).toBe(false);
+    expect(res.state.buffer).toEqual(bar(2));
+  });
+
+  it('rotates the stored part', () => {
+    const s = blank([single(), null, null], { buffer: bar(3) });
+    expect(spinPiece(s, BUFFER)!.buffer!.h).toBe(3);
+  });
+
+  it('keeps the game going while the stored part fits', () => {
+    const grid = onlyOpen([[2, 2]]);
+    const s = blank([bar(2), null, null], { grid, buffer: single() });
+    expect(anyMove(s)).toBe(true);
+    expect(anyMove({ ...s, buffer: null })).toBe(false);
   });
 });
