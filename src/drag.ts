@@ -1,6 +1,7 @@
 import type { SharedValue } from 'react-native-reanimated';
 
 import { circuitArc, circuitPath, N, type Lines, type Terminals } from './engine';
+import { C } from './theme';
 
 export const DRAG_GAIN = 1.4;
 export const LIFT_CELLS = 1.93;
@@ -132,6 +133,16 @@ export function completedLines(grid: number[], g: SlotGeo | null, code: number, 
   }
   const path = circuitPath(placed, t) ?? [];
   return { rows, cols, circuit: [...path, ...circuitArc(placed, path)] };
+}
+
+export function clearPreview(grid: number[], clears: Clears, color: string) {
+  const hint = new Map<number, string>();
+  for (let j = 0; j < N; j++) {
+    clears.rows.forEach((r) => grid[r * N + j] >= 0 && hint.set(r * N + j, color));
+    clears.cols.forEach((c) => grid[j * N + c] >= 0 && hint.set(j * N + c, color));
+  }
+  clears.circuit.forEach((k) => grid[k] >= 0 && hint.set(k, C.circuit));
+  return hint;
 }
 
 export function sameLines(a: Clears, b: Clears) {

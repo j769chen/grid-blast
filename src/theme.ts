@@ -17,6 +17,7 @@ export const C = {
   danger: '#c93a46',
   trace: '#fff1c7',
   traceGlow: '#ffd27a',
+  circuit: '#944dff',
   surge: '#ff5fd2',
   surgeTrace: '#ffc2f4',
   surgeText: '#ffb3f3',

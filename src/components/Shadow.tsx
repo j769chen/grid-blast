@@ -4,7 +4,7 @@ import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 
 import { NO_CELL, OFFSCREEN, type Clears, type DragShared } from '../drag';
 import { N, type Piece } from '../engine';
-import { PART_COLORS, span, type Metrics } from '../theme';
+import { C, PART_COLORS, span, type Metrics } from '../theme';
 import { Led } from './Led';
 
 function lit(target: number, lines: Clears, dr: number, dc: number) {
@@ -15,13 +15,26 @@ function lit(target: number, lines: Clears, dr: number, dc: number) {
   return lines.rows.includes(r) || lines.cols.includes(c) || lines.circuit.includes(r * N + c);
 }
 
+function wired(target: number, lines: Clears, dr: number, dc: number) {
+  'worklet';
+  return target !== NO_CELL && lines.circuit.includes(target + dr * N + dc);
+}
+
 function ShadowCell({ p, k, m, drag }: { p: Piece; k: number; m: Metrics; drag: DragShared }) {
   const [dr, dc] = p.cells[k];
+  const core = k === p.core ? p.coreKind : null;
   const cell = useAnimatedStyle(() => ({ opacity: lit(drag.target.get(), drag.lines.get(), dr, dc) ? 1 : 0.45 }));
   const glare = useAnimatedStyle(() => ({ opacity: lit(drag.target.get(), drag.lines.get(), dr, dc) ? 1 : 0 }));
+  const part = useAnimatedStyle(() => ({ opacity: wired(drag.target.get(), drag.lines.get(), dr, dc) ? 0 : 1 }));
+  const circuit = useAnimatedStyle(() => ({ opacity: wired(drag.target.get(), drag.lines.get(), dr, dc) ? 1 : 0 }));
   return (
     <Animated.View style={[styles.cell, { left: dc * m.pitch, top: dr * m.pitch }, cell]}>
-      <Led color={PART_COLORS[p.c]} size={m.cell} b={m.b} glow={m.glow} core={k === p.core ? p.coreKind : null} />
+      <Animated.View style={part}>
+        <Led color={PART_COLORS[p.c]} size={m.cell} b={m.b} glow={m.glow} core={core} />
+      </Animated.View>
+      <Animated.View style={[styles.layer, circuit]}>
+        <Led color={C.circuit} size={m.cell} b={m.b} glow={m.glow} core={core} />
+      </Animated.View>
       <Animated.View style={[styles.glare, glare]} />
     </Animated.View>
   );
@@ -75,5 +88,6 @@ export const ShadowLayer = memo(function ShadowLayer({
 const styles = StyleSheet.create({
   piece: { position: 'absolute' },
   cell: { position: 'absolute' },
+  layer: { ...StyleSheet.absoluteFill },
   glare: { ...StyleSheet.absoluteFill, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.18)' },
 });

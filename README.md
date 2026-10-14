@@ -31,7 +31,7 @@ npx expo start
 - A power input (+) and an output (−) sit in the margin around the board, each beside one square on any of the four edges. They're always far enough apart that a circuit takes at least 7 squares.
 - Fill the square next to each terminal and connect them with an unbroken chain of filled squares, touching edge to edge, to complete a circuit.
 - A spark runs from + to − along the shortest path. Then the path and every filled square touching it edge to edge clear together. It counts as a clearing move for combos, and any cores caught in the clear detonate.
-- Both terminals then move to new spots, never to a pair that's already connected. While dragging, a placement that would complete a circuit highlights every square it would clear.
+- Both terminals then move to new spots, never to a pair that's already connected. While dragging, a placement that would complete a circuit highlights every square it would clear in violet, a colour no part uses.
 
 ## Cores
 

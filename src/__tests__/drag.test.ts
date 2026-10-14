@@ -2,6 +2,7 @@ import { describe, expect, it } from '@jest/globals';
 import type { SharedValue } from 'react-native-reanimated';
 
 import {
+  clearPreview,
   completedLines,
   decodeCell,
   DRAG_GAIN,
@@ -18,6 +19,7 @@ import {
   type SlotGeo,
 } from '../drag';
 import { cellIndex, N, type Terminals } from '../engine';
+import { C, PART_COLORS } from '../theme';
 
 const empty = () => Array<number>(N * N).fill(-1);
 const square: SlotGeo = { w: 0, h: 0, pw: 2, ph: 2, cells: [0, 0, 0, 1, 1, 0, 1, 1] };
@@ -173,5 +175,25 @@ describe('completedLines', () => {
     expect(completedLines(empty(), square, NO_CELL, far)).toEqual(none);
     expect(completedLines(empty(), null, encodeCell(0, 0), far)).toEqual(none);
     expect(completedLines(empty(), square, encodeCell(3, 3), far)).toEqual(none);
+  });
+});
+
+describe('clearPreview', () => {
+  it('colours line squares like the dragged part and circuit squares in a colour no part uses', () => {
+    const grid = empty();
+    [cellIndex(0, 0), cellIndex(0, 5), cellIndex(3, 3)].forEach((k) => (grid[k] = 1));
+    const hint = clearPreview(
+      grid,
+      { rows: [0], cols: [], circuit: [cellIndex(0, 5), cellIndex(3, 3), cellIndex(4, 4)] },
+      '#123456',
+    );
+    expect(hint).toEqual(
+      new Map([
+        [cellIndex(0, 0), '#123456'],
+        [cellIndex(0, 5), C.circuit],
+        [cellIndex(3, 3), C.circuit],
+      ]),
+    );
+    expect(PART_COLORS).not.toContain(C.circuit);
   });
 });
