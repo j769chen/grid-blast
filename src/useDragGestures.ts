@@ -72,7 +72,7 @@ export function useDragGestures({ state, stateRef, m, onPlace, haptic }: Options
   const slots = useSharedValue<Slot[]>(SLOTS.map(() => ({ x: 0, y: 0, w: 0, h: 0 })));
   const missFrom = useSharedValue<Point[]>(SLOTS.map(() => ({ x: 0, y: 0 })));
   const back = useSharedValue(DONE);
-  const shrink = useSharedValue(SLOTS.map(() => (m.mini + m.miniGap) / m.pitch));
+  const shrink = useSharedValue((m.mini + m.miniGap) / m.pitch);
   const target = useSharedValue(NO_CELL);
   const lines = useSharedValue<Clears>({ rows: [], cols: [], circuit: [] });
   const terminals = useSharedValue<Terminals>(NO_TERMINALS);
@@ -109,7 +109,7 @@ export function useDragGestures({ state, stateRef, m, onPlace, haptic }: Options
     grid.set(state?.grid ?? []);
     terminals.set(state?.terminals ?? NO_TERMINALS);
     pitch.set(m.pitch);
-    shrink.set(SLOTS.map(() => (m.mini + m.miniGap) / m.pitch));
+    shrink.set((m.mini + m.miniGap) / m.pitch);
     enabled.set(!!state && !state.over);
   }, [state, m, geo, grid, terminals, pitch, shrink, enabled]);
 

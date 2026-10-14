@@ -30,7 +30,7 @@ function drag(): DragShared {
     slots: makeMutable(slots.map(() => ({ x: 0, y: 0, w: 0, h: 0 }))),
     missFrom: makeMutable(slots.map(() => ({ x: OFFSCREEN, y: OFFSCREEN }))),
     back: makeMutable(slots.map(() => 1)),
-    shrink: makeMutable([0.5, 0.5, 0.5]),
+    shrink: makeMutable(0.5),
     target: makeMutable(NO_CELL),
     lines: makeMutable<Clears>({ rows: [], cols: [], circuit: [] }),
   };
