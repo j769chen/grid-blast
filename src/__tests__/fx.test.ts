@@ -61,6 +61,27 @@ describe('buildFx', () => {
     expect(texts(clear, 0, 0)).toContain('praise:Board clear!');
   });
 
+  it('counts chained surges, and only colours the headline as a surge when cores are the whole story', () => {
+    const chain = state([single(), single(), single()]);
+    for (let c = 1; c < N; c++) chain.grid[c] = 1;
+    for (let r = 1; r <= 5; r++) chain.grid[cellIndex(r, 3)] = 2;
+    chain.cores[cellIndex(0, 3)] = 'line';
+    chain.cores[cellIndex(5, 3)] = 'line';
+    chain.grid[cellIndex(7, 7)] = 4;
+    const praise = (s: GameState) =>
+      buildFx(
+        placePiece(s, 0, 0, 0, () => 0.5)!,
+        m,
+      ).find((it) => it.kind === 'praise');
+    expect(praise(chain)).toMatchObject({ text: 'Surge ×2!', surge: true });
+
+    const clear = state([single(), single(), single()]);
+    for (let c = 1; c < N; c++) clear.grid[c] = 1;
+    clear.grid[cellIndex(4, 2)] = 3;
+    clear.cores[cellIndex(0, 2)] = 'line';
+    expect(praise(clear)).toMatchObject({ text: 'Board clear!', surge: false });
+  });
+
   it('draws one trace per cleared line and one burst per cleared cell', () => {
     const s = state([single(), single(), single()]);
     for (let c = 1; c < N; c++) s.grid[c] = 1;
