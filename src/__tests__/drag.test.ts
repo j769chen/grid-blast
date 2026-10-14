@@ -6,7 +6,6 @@ import {
   completedLines,
   decodeCell,
   DRAG_GAIN,
-  encodeCell,
   ghostFrame,
   returnFrame,
   LIFT_CELLS,
@@ -49,7 +48,7 @@ describe('nearestCell', () => {
   });
 
   it('round-trips cell codes', () => {
-    expect(decodeCell(encodeCell(0, 7))).toEqual({ r: 0, c: 7 });
+    expect(decodeCell(cellIndex(0, 7))).toEqual({ r: 0, c: 7 });
   });
 });
 
@@ -86,7 +85,6 @@ function drag(touch: { x: number; y: number }, mouse: boolean, back = [1, 1, 1],
     shrink: sv([0.5, 0.5, 0.5]),
     target: sv(NO_CELL),
     lines: sv<Clears>({ rows: [], cols: [], circuit: [] }),
-    terminals: sv<Terminals>({ plus: { side: 'left', at: 4 }, minus: { side: 'top', at: 4 } }),
   };
 }
 
@@ -138,7 +136,7 @@ describe('completedLines', () => {
     const grid = empty();
     for (let c = 2; c < N; c++) grid[c] = 1;
     for (let r = 2; r < N; r++) grid[r * N + 1] = 1;
-    expect(completedLines(grid, square, encodeCell(0, 0), far)).toEqual({ rows: [0], cols: [1], circuit: [] });
+    expect(completedLines(grid, square, cellIndex(0, 0), far)).toEqual({ rows: [0], cols: [1], circuit: [] });
   });
 
   it('includes the circuit path and every filled square touching it', () => {
@@ -152,7 +150,7 @@ describe('completedLines', () => {
       [5, 0],
       [6, 6],
     ].forEach(([r, c]) => (grid[cellIndex(r, c)] = 1));
-    const { circuit } = completedLines(grid, square, encodeCell(1, 0), {
+    const { circuit } = completedLines(grid, square, cellIndex(1, 0), {
       plus: { side: 'left', at: 4 },
       minus: { side: 'top', at: 3 },
     });
@@ -173,8 +171,8 @@ describe('completedLines', () => {
   it('is empty with no target, no part, or nothing completed', () => {
     const none = { rows: [], cols: [], circuit: [] };
     expect(completedLines(empty(), square, NO_CELL, far)).toEqual(none);
-    expect(completedLines(empty(), null, encodeCell(0, 0), far)).toEqual(none);
-    expect(completedLines(empty(), square, encodeCell(3, 3), far)).toEqual(none);
+    expect(completedLines(empty(), null, cellIndex(0, 0), far)).toEqual(none);
+    expect(completedLines(empty(), square, cellIndex(3, 3), far)).toEqual(none);
   });
 });
 

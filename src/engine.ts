@@ -1,18 +1,22 @@
 export const N = 8;
 export const TRAY_SIZE = 3;
 export const COLOR_COUNT = 7;
-export const CORE_CHANCE = 0.4;
-export const AREA_CHANCE = 0.5;
-export const PTS = { cell: 10, line: 100, core: 40, circuit: 50, perfect: 3000 };
+const CORE_CHANCE = 0.4;
+const AREA_CHANCE = 0.5;
+export const PTS = { cell: 10, line: 100, core: 40, circuit: 50, arc: 40, perfect: 3000 };
 export const MIN_CIRCUIT = 7;
 export const COMBO_GRACE = 3;
 
 export const lineScore = (lines: number) => (PTS.line * lines * (lines + 1)) / 2;
 
-export type Rand = () => number;
+type Rand = () => number;
 
-export const cellIndex = (r: number, c: number) => r * N + c;
-export type Cell = [number, number];
+export function cellIndex(r: number, c: number) {
+  'worklet';
+  return r * N + c;
+}
+
+type Cell = [number, number];
 export type CoreKind = 'line' | 'area';
 
 export interface Piece {
@@ -29,7 +33,7 @@ export interface Surge {
   kind: CoreKind;
 }
 
-export type Side = 'left' | 'right' | 'top' | 'bottom';
+type Side = 'left' | 'right' | 'top' | 'bottom';
 
 export interface Port {
   side: Side;
@@ -157,7 +161,7 @@ export function fits(grid: number[], p: Piece, r: number, c: number) {
   return p.cells.every(([dr, dc]) => grid[cellIndex(r + dr, c + dc)] < 0);
 }
 
-export function canPlace(grid: number[], p: Piece) {
+function canPlace(grid: number[], p: Piece) {
   for (let r = 0; r <= N - p.h; r++) for (let c = 0; c <= N - p.w; c++) if (fits(grid, p, r, c)) return true;
   return false;
 }
@@ -176,6 +180,7 @@ export function anyMove(s: GameState) {
 }
 
 export function fullLines(grid: number[]): Lines {
+  'worklet';
   const rows: number[] = [];
   const cols: number[] = [];
   for (let i = 0; i < N; i++) {
@@ -285,7 +290,7 @@ const PAIRS: Terminals[] = PORTS.flatMap((plus) =>
   PORTS.map((minus) => ({ plus, minus })).filter((t) => shortestCircuit(t) >= MIN_CIRCUIT),
 );
 
-const samePort = (a: Port, b: Port) => a.side === b.side && a.at === b.at;
+export const samePort = (a: Port, b: Port) => a.side === b.side && a.at === b.at;
 
 export function pickTerminals(grid: number[], rand: Rand = Math.random, avoid?: Terminals): Terminals {
   const open = PAIRS.filter((t) => !circuitPath(grid, t));
@@ -400,7 +405,8 @@ export function placePiece(
   let perfect = false;
 
   if (base.size) {
-    const hit = new Set([...base, ...circuitArc(grid, circuit)]);
+    const arc = circuitArc(grid, circuit).filter((k) => !base.has(k));
+    const hit = new Set([...base, ...arc]);
     const seen = new Set<number>();
     const queue = [...hit].filter((k) => cores[k]);
     while (queue.length) {
@@ -415,10 +421,10 @@ export function placePiece(
         if (cores[x]) queue.push(x);
       }
     }
-    const extra = hit.size - base.size;
+    const blasted = hit.size - base.size - arc.length;
     combo += 1;
     idle = 0;
-    gained += lineScore(lineCount) * combo + extra * PTS.core + circuit.length * PTS.circuit;
+    gained += lineScore(lineCount) * combo + circuit.length * PTS.circuit + arc.length * PTS.arc + blasted * PTS.core;
     hit.forEach((k) => {
       cleared.push({ idx: k, color: grid[k] });
       grid[k] = -1;

@@ -4,18 +4,20 @@ import { Gesture, PointerType } from 'react-native-gesture-handler';
 import { Easing, useAnimatedReaction, useSharedValue, withTiming } from 'react-native-reanimated';
 import { scheduleOnRN, scheduleOnUI } from 'react-native-worklets';
 
-import type { Preview } from './components/Board';
 import {
   clearPreview,
   completedLines,
   decodeCell,
   ghostFrame,
+  MOVE_SLOP,
   NO_CELL,
+  NO_SLOT,
   NO_TERMINALS,
   sameLines,
   targetCell,
-  type DragShared,
   type Clears,
+  type DragShared,
+  type Preview,
   type Point,
   type Slot,
   type SlotGeo,
@@ -59,7 +61,7 @@ export function useDragGestures({ state, stateRef, m, onPlace, haptic }: Options
     [],
   );
 
-  const dragSlot = useSharedValue(-1);
+  const dragSlot = useSharedValue(NO_SLOT);
   const touch = useSharedValue<Point>({ x: 0, y: 0 });
   const origin = useSharedValue<Point>({ x: 0, y: 0 });
   const finger = useSharedValue<Point>({ x: 0, y: 0 });
@@ -94,9 +96,8 @@ export function useDragGestures({ state, stateRef, m, onPlace, haptic }: Options
       shrink,
       target,
       lines,
-      terminals,
     }),
-    [dragSlot, touch, origin, pitch, mouse, geo, landing, slots, missFrom, back, shrink, target, lines, terminals],
+    [dragSlot, touch, origin, pitch, mouse, geo, landing, slots, missFrom, back, shrink, target, lines],
   );
 
   useEffect(() => {
@@ -216,7 +217,7 @@ export function useDragGestures({ state, stateRef, m, onPlace, haptic }: Options
           .minDistance(0)
           .maxPointers(1)
           .onBegin((e) => {
-            if (!enabled.get() || !geo.get()[i] || dragSlot.get() !== -1 || landing.get()[i]) return;
+            if (!enabled.get() || !geo.get()[i] || dragSlot.get() !== NO_SLOT || landing.get()[i]) return;
             if (back.get()[i] < 1) {
               back.set(back.get().map((t, k) => (k === i ? 1 : t)));
               back.set(withTiming(DONE, RETURN));
@@ -237,7 +238,7 @@ export function useDragGestures({ state, stateRef, m, onPlace, haptic }: Options
             const f0 = finger.get();
             const dx = e.absoluteX - f0.x;
             const dy = e.absoluteY - f0.y;
-            if (!moved.get() && Math.hypot(dx, dy) > 8) moved.set(true);
+            if (!moved.get() && Math.hypot(dx, dy) > MOVE_SLOP) moved.set(true);
             touch.set({ x: o.x + dx, y: o.y + dy });
           })
           .onFinalize((_e, success) => {
@@ -252,7 +253,7 @@ export function useDragGestures({ state, stateRef, m, onPlace, haptic }: Options
               back.set(back.get().map((t, k) => (k === i ? 0 : t)));
               back.set(withTiming(DONE, RETURN));
             }
-            dragSlot.set(-1);
+            dragSlot.set(NO_SLOT);
             events.set([...events.get(), { slot: i, code, end: true }]);
           }),
       ),

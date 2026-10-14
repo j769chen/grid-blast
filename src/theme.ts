@@ -8,6 +8,7 @@ export const C = {
   padFaint: 'rgba(212,173,98,0.13)',
   padEdge: 'rgba(212,173,98,0.28)',
   padRing: 'rgba(212,173,98,0.5)',
+  padLine: 'rgba(212,173,98,0.55)',
   copper: '#d08a4c',
   silk: '#eef2e6',
   silkDim: 'rgba(238,242,230,0.75)',

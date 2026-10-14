@@ -8,10 +8,10 @@ import { Board } from '../components/Board';
 import { Help } from '../components/Help';
 import { Hud } from '../components/Hud';
 import { Tray } from '../components/Tray';
-import { describeCell, describePiece } from '../describe';
+import { describeCell, describePiece, describePlacement, PART_NAMES } from '../describe';
 import { NO_CELL, OFFSCREEN, type Clears, type DragShared, type Point, type SlotGeo } from '../drag';
-import { cellIndex, makePiece, N, type CoreKind, type Piece, type Terminals } from '../engine';
-import { metrics } from '../theme';
+import { cellIndex, COLOR_COUNT, makePiece, N, placePiece, type CoreKind, type Piece, type Terminals } from '../engine';
+import { metrics, PART_COLORS } from '../theme';
 
 const m = metrics(390, 800);
 const single = (): Piece => makePiece(0, 0);
@@ -33,7 +33,6 @@ function drag(): DragShared {
     shrink: makeMutable([0.5, 0.5, 0.5]),
     target: makeMutable(NO_CELL),
     lines: makeMutable<Clears>({ rows: [], cols: [], circuit: [] }),
-    terminals: makeMutable<Terminals>({ plus: { side: 'left', at: 4 }, minus: { side: 'top', at: 4 } }),
   };
 }
 
@@ -72,6 +71,34 @@ describe('screen reader descriptions', () => {
     );
     expect(describeCell(0, 0, -1, null)).toBe('A1, empty');
     expect(describeCell(7, 7, 6, 'area')).toBe('H8, white, area core');
+  });
+
+  it('has a name and a colour for every part colour', () => {
+    expect(PART_NAMES).toHaveLength(COLOR_COUNT);
+    expect(PART_COLORS).toHaveLength(COLOR_COUNT);
+  });
+
+  it('sums up a placement', () => {
+    const grid = Array<number>(N * N).fill(-1);
+    for (let c = 1; c < N; c++) grid[c] = 2;
+    grid[cellIndex(5, 5)] = 1;
+    const res = placePiece(
+      {
+        grid,
+        cores: Array(N * N).fill(null),
+        terminals: { plus: { side: 'left', at: 7 }, minus: { side: 'top', at: 7 } },
+        tray: [single(), single(), single()],
+        score: 0,
+        best: 0,
+        combo: 0,
+        idle: 0,
+        over: false,
+      },
+      0,
+      0,
+      0,
+    )!;
+    expect(describePlacement(res)).toBe('Placed. 1 line cleared. Score 110.');
   });
 });
 

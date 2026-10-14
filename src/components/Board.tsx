@@ -1,16 +1,14 @@
 import { memo, type Ref } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-import type { DragShared } from '../drag';
+import type { DragShared, Preview } from '../drag';
 import { COL_LABELS, describeCell, ROW_LABELS } from '../describe';
-import { fits, N, portCell, type CoreKind, type Piece, type Port, type Terminals } from '../engine';
+import { fits, N, portCell, samePort, type CoreKind, type Piece, type Port, type Terminals } from '../engine';
 import { C, F, PART_COLORS, portCentre, type Metrics } from '../theme';
 import type { FxSpec } from '../fx';
 import { FxLayer } from './Fx';
 import { Led, Pad, PortSign } from './Led';
 import { ShadowLayer } from './Shadow';
-
-export type Preview = Map<number, string>;
 
 interface BoardProps {
   grid: number[];
@@ -110,7 +108,7 @@ export const Board = memo(function Board({
   const origin = m.pad + m.gut;
   const labelSize = m.size * 0.03;
   const taken = (side: Port['side'], at: number) =>
-    [terminals.plus, terminals.minus].some((p) => p.side === side && p.at === at);
+    samePort(terminals.plus, { side, at }) || samePort(terminals.minus, { side, at });
 
   return (
     <View onLayout={onBoardLayout} style={styles.outline}>
@@ -193,7 +191,7 @@ export const Board = memo(function Board({
 const styles = StyleSheet.create({
   outline: { padding: 4, borderRadius: 12, borderWidth: 1, borderColor: C.silkLine, backgroundColor: C.maskDeep },
   board: { borderRadius: 8, backgroundColor: C.maskDark },
-  edge: { ...StyleSheet.absoluteFill, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(212,173,98,0.55)' },
+  edge: { ...StyleSheet.absoluteFill, borderRadius: 8, borderWidth: 1, borderColor: C.padLine },
   terminal: { position: 'absolute', alignItems: 'center', justifyContent: 'center' },
   silk: { position: 'absolute', textAlign: 'center', color: C.silkDim, fontFamily: F.mono },
 });

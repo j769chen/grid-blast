@@ -63,22 +63,23 @@ Peak score, the game in progress, the vibration setting, and whether you've seen
 ## Scripts
 
 ```sh
-npm test            # unit tests (Jest)
-npm run lint        # ESLint via expo lint
-npm run typecheck   # tsc --noEmit
+npm test              # unit tests (Jest)
+npm run lint          # ESLint via expo lint
+npm run typecheck     # tsc --noEmit
+npm run format:check  # Prettier
 ```
 
 ## Layout
 
 ```
-App.tsx                 font loading, safe-area provider
+App.tsx                 font loading, splash screen, safe-area provider
 src/Game.tsx            game screen: state transitions, timers, layout
-src/engine.ts           pure game logic: pieces, rotation, line clears, cores, scoring
-src/drag.ts             drag geometry and nearest-spot targeting (worklets)
-src/useDragGestures.ts  pan gestures, shared values, layout measuring, placement preview
+src/engine.ts           pure game logic: pieces, rotation, line clears, cores, circuits and terminals, scoring, save validation
+src/drag.ts             drag geometry, nearest-spot targeting and the clear preview
+src/useDragGestures.ts  pan gestures, shared values, layout measuring, preview state
 src/fx.ts               builds the line-clear effects for a placement
-src/describe.ts         screen-reader descriptions of parts and squares
-src/storage.ts          saved game, peak score and vibration setting
+src/describe.ts         screen-reader descriptions of parts, squares and placements
+src/storage.ts          saved game and its migrations, peak score, vibration setting, help-seen flag
 src/haptics.ts          vibration patterns
 src/theme.ts            colors, fonts, board sizing
 src/format.ts           number formatting
