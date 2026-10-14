@@ -13,6 +13,11 @@ export interface Point {
   y: number;
 }
 
+export interface Slot extends Point {
+  w: number;
+  h: number;
+}
+
 export interface SlotGeo {
   w: number;
   h: number;
@@ -29,6 +34,22 @@ export interface DragShared {
   mouse: SharedValue<boolean>;
   geo: SharedValue<(SlotGeo | null)[]>;
   landing: SharedValue<(Point | null)[]>;
+  slots: SharedValue<Slot[]>;
+  missFrom: SharedValue<Point[]>;
+  back: SharedValue<number[]>;
+  shrink: SharedValue<number>;
+}
+
+export function returnFrame(d: DragShared, i: number) {
+  'worklet';
+  const t = d.back.get()[i];
+  const g = d.geo.get()[i];
+  if (t >= 1 || !g) return null;
+  const from = d.missFrom.get()[i];
+  const s = d.slots.get()[i];
+  const x = s.x + s.w / 2 - g.w / 2;
+  const y = s.y + s.h / 2 - g.h / 2;
+  return { x: from.x + (x - from.x) * t, y: from.y + (y - from.y) * t, scale: 1 + (d.shrink.get() - 1) * t };
 }
 
 export function ghostFrame(d: DragShared, i: number): Point {
