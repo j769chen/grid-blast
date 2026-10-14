@@ -1,7 +1,7 @@
 import { describe, expect, it } from '@jest/globals';
 
 import { cellIndex, makePiece, N, placePiece, type GameState, type Piece } from '../engine';
-import { buildFx } from '../fx';
+import { buildFx, CIRCUIT_STEP, circuitDelay } from '../fx';
 import { metrics, span } from '../theme';
 
 const m = metrics(390, 800);
@@ -84,7 +84,7 @@ describe('buildFx', () => {
     expect(items.some((it) => it.kind === 'trace' && it.surge)).toBe(false);
   });
 
-  it('sparks along a completed circuit and headlines it', () => {
+  it('runs a bolt from + to − along a circuit, then clears the path and arc together', () => {
     const s = state([single(), single(), single()], { terminals: { row: 3, col: 3 } });
     [
       [3, 0],
@@ -93,11 +93,24 @@ describe('buildFx', () => {
       [0, 1],
       [0, 2],
       [0, 3],
+      [1, 1],
       [6, 6],
     ].forEach(([r, c]) => (s.grid[cellIndex(r, c)] = 2));
     const res = placePiece(s, 0, 0, 0, () => 0.5)!;
     const items = buildFx(res, m);
+    const boom = circuitDelay(res.circuit);
+    const mid = (n: number) => n * m.pitch + m.cell / 2;
+    expect(boom).toBe((res.circuit.length + 1) * CIRCUIT_STEP);
     expect(items.filter((it) => it.kind === 'spark')).toHaveLength(res.circuit.length);
-    expect(texts(s, 0, 0)).toContain('praise:Circuit!');
+    const [bolt] = items.flatMap((it) => (it.kind === 'bolt' ? [it] : []));
+    expect(bolt.duration).toBe(boom);
+    expect([bolt.xs[0], bolt.ys[0]]).toEqual([-m.gut / 2, mid(3)]);
+    expect([bolt.xs.at(-1), bolt.ys.at(-1)]).toEqual([mid(3), -m.gut / 2]);
+    const burstAt = (r: number, c: number) =>
+      items.flatMap((it) => (it.kind === 'burst' && it.x === c * m.pitch && it.y === r * m.pitch ? [it.delay] : []))[0];
+    expect(res.circuit.map((idx) => burstAt(Math.floor(idx / N), idx % N))).toEqual(res.circuit.map(() => boom));
+    expect(burstAt(1, 1)).toBe(boom + 70);
+    expect(burstAt(6, 6)).toBeUndefined();
+    expect(items.find((it) => it.kind === 'praise')).toMatchObject({ text: 'Circuit!', delay: boom });
   });
 });

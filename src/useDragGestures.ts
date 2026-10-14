@@ -73,7 +73,7 @@ export function useDragGestures({ state, stateRef, m, onPlace, onStash, haptic }
   const back = useSharedValue(DONE);
   const shrink = useSharedValue(SLOTS.map(() => (m.mini + m.miniGap) / m.pitch));
   const target = useSharedValue(NO_CELL);
-  const lines = useSharedValue<Clears>({ rows: [], cols: [], path: [] });
+  const lines = useSharedValue<Clears>({ rows: [], cols: [], circuit: [] });
   const terminals = useSharedValue<Terminals>({ row: -1, col: -1 });
   const enabled = useSharedValue(false);
   const moved = useSharedValue(false);
@@ -171,7 +171,7 @@ export function useDragGestures({ state, stateRef, m, onPlace, onStash, haptic }
     (next: Clears) => {
       const d = dragRef.current;
       const s = stateRef.current;
-      if (!d || !s || (!next.rows.length && !next.cols.length && !next.path.length)) {
+      if (!d || !s || (!next.rows.length && !next.cols.length && !next.circuit.length)) {
         setPreview(null);
         return;
       }
@@ -180,7 +180,7 @@ export function useDragGestures({ state, stateRef, m, onPlace, onStash, haptic }
         next.rows.forEach((r) => s.grid[cellIndex(r, j)] >= 0 && hint.add(cellIndex(r, j)));
         next.cols.forEach((c) => s.grid[cellIndex(j, c)] >= 0 && hint.add(cellIndex(j, c)));
       }
-      next.path.forEach((k) => s.grid[k] >= 0 && hint.add(k));
+      next.circuit.forEach((k) => s.grid[k] >= 0 && hint.add(k));
       setPreview({ hint, color: PART_COLORS[d.p.c] });
     },
     [stateRef],

@@ -29,7 +29,7 @@ function drag(): DragShared {
     back: makeMutable(slots.map(() => 1)),
     shrink: makeMutable([0.5, 0.5, 0.5, 0.3]),
     target: makeMutable(NO_CELL),
-    lines: makeMutable<Clears>({ rows: [], cols: [], path: [] }),
+    lines: makeMutable<Clears>({ rows: [], cols: [], circuit: [] }),
     terminals: makeMutable({ row: 4, col: 4 }),
     canStash: makeMutable(true),
   };

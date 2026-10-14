@@ -10,7 +10,7 @@ import { Hud } from './components/Hud';
 import { Tray, type SlotAnim } from './components/Tray';
 import { anyMove, BUFFER, newGame, parts, placePiece, SOURCES, spinPiece, stashPiece, type GameState } from './engine';
 import { fmt } from './format';
-import { buildFx, FX_LIFETIME, type FxSpec } from './fx';
+import { buildFx, circuitDelay, FX_LIFETIME, type FxSpec } from './fx';
 import { buzz, type Buzz } from './haptics';
 import { loadSaved, saveGame, saveHaptics } from './storage';
 import { C, metrics } from './theme';
@@ -124,7 +124,15 @@ export default function Game() {
         setFx((f) => [...f, ...items]);
         setTimeout(() => setFx((f) => f.filter((it) => !ids.has(it.id))), FX_LIFETIME);
       }
-      haptic(res.surges.length || res.perfect || res.circuit.length ? 'heavy' : res.lineCount ? 'medium' : 'light');
+      const kind =
+        res.surges.length || res.perfect || res.circuit.length ? 'heavy' : res.lineCount ? 'medium' : 'light';
+      const boom = circuitDelay(res.circuit);
+      if (boom) {
+        haptic('light');
+        setTimeout(() => haptic(kind), boom);
+      } else {
+        haptic(kind);
+      }
       return res;
     },
     [commit, dealAll, haptic],

@@ -437,14 +437,34 @@ describe('circuits', () => {
     expect(circuitPath(res.state.grid, res.state.terminals)).toBeNull();
   });
 
-  it('detonates cores on the path', () => {
+  it('also clears every filled square touching the path, at 40 each', () => {
     const s = wired(2);
-    s.cores[cellIndex(0, 1)] = 'area';
-    s.grid[cellIndex(1, 2)] = 5;
+    s.grid[cellIndex(1, 1)] = 3;
+    s.grid[cellIndex(5, 0)] = 3;
     const res = placePiece(s, 0, 2, 0, seeded())!;
-    expect(res.surges).toEqual([{ idx: cellIndex(0, 1), kind: 'area' }]);
-    expect(res.state.grid[cellIndex(1, 2)]).toBe(-1);
-    expect(res.gained).toBe(10 + route.length * 50 + 40);
+    expect(res.state.grid[cellIndex(1, 1)]).toBe(-1);
+    expect(res.state.grid[cellIndex(5, 0)]).toBe(-1);
+    expect(res.state.grid[cellIndex(6, 6)]).toBe(4);
+    expect(res.gained).toBe(10 + route.length * 50 + 2 * 40);
+  });
+
+  it('detonates cores on the path and around it', () => {
+    const s = wired(2);
+    s.cores[cellIndex(0, 1)] = 'line';
+    s.grid[cellIndex(5, 1)] = 5;
+    s.grid[cellIndex(5, 0)] = 3;
+    s.cores[cellIndex(5, 0)] = 'area';
+    s.grid[cellIndex(6, 2)] = 5;
+    const res = placePiece(s, 0, 2, 0, seeded())!;
+    expect(res.surges).toEqual(
+      expect.arrayContaining([
+        { idx: cellIndex(0, 1), kind: 'line' },
+        { idx: cellIndex(5, 0), kind: 'area' },
+      ]),
+    );
+    expect(res.state.grid[cellIndex(5, 1)]).toBe(-1);
+    expect(res.state.grid[cellIndex(6, 2)]).toBe(5);
+    expect(res.gained).toBe(10 + route.length * 50 + 2 * 40);
   });
 
   it('adds the circuit to line clears in the same move', () => {

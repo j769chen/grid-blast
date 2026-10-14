@@ -18,15 +18,16 @@ import { Led } from './Led';
 
 const EASE_IN = Easing.in(Easing.quad);
 const EASE_OUT = Easing.out(Easing.quad);
+const LINEAR = Easing.linear;
 
 type Of<K extends Fx['kind']> = Extract<Fx, { kind: K }>;
 
-function useProgress(kind: Fx['kind'], delay = 0, easing: EasingFunction = EASE_OUT): SharedValue<number> {
+function useProgress(duration: number, delay = 0, easing: EasingFunction = EASE_OUT): SharedValue<number> {
   const v = useSharedValue(0);
   useEffect(() => {
-    v.set(withDelay(delay, withTiming(1, { duration: FX_DURATION[kind], easing })));
+    v.set(withDelay(delay, withTiming(1, { duration, easing })));
     return () => cancelAnimation(v);
-  }, [v, kind, delay, easing]);
+  }, [v, duration, delay, easing]);
   return v;
 }
 
@@ -34,7 +35,7 @@ const box = (fx: { x: number; y: number; w: number; h: number }) =>
   ({ position: 'absolute', left: fx.x, top: fx.y, width: fx.w, height: fx.h }) as const;
 
 function Burst({ fx, m }: { fx: Of<'burst'>; m: Metrics }) {
-  const v = useProgress('burst', fx.delay, EASE_IN);
+  const v = useProgress(FX_DURATION.burst, fx.delay, EASE_IN);
   const motion = useAnimatedStyle(() => ({
     opacity: interpolate(v.get(), [0, 0.35, 1], [1, 1, 0]),
     transform: [
@@ -42,7 +43,7 @@ function Burst({ fx, m }: { fx: Of<'burst'>; m: Metrics }) {
       { rotate: `${interpolate(v.get(), [0, 0.35, 1], [0, 0, 25])}deg` },
     ],
   }));
-  const flash = useAnimatedStyle(() => ({ opacity: interpolate(v.get(), [0, 0.35], [0.8, 0]) }));
+  const flash = useAnimatedStyle(() => ({ opacity: interpolate(v.get(), [0, 0.06, 0.35], [0, 0.8, 0]) }));
   return (
     <Animated.View style={[box(fx), motion]}>
       <Led color={fx.color} size={fx.w} b={m.b} />
@@ -52,7 +53,7 @@ function Burst({ fx, m }: { fx: Of<'burst'>; m: Metrics }) {
 }
 
 function Trace({ fx }: { fx: Of<'trace'> }) {
-  const v = useProgress('trace', fx.delay);
+  const v = useProgress(FX_DURATION.trace, fx.delay);
   const horizontal = fx.axis === 'h';
   const motion = useAnimatedStyle(() => {
     const grow = interpolate(v.get(), [0, 0.45, 1], [0, 1, 1]);
@@ -75,7 +76,7 @@ function Trace({ fx }: { fx: Of<'trace'> }) {
 }
 
 function Ring({ fx }: { fx: Of<'ring'> }) {
-  const v = useProgress('ring', fx.delay);
+  const v = useProgress(FX_DURATION.ring, fx.delay);
   const motion = useAnimatedStyle(() => ({
     opacity: interpolate(v.get(), [0, 1], [1, 0]),
     transform: [{ scale: interpolate(v.get(), [0, 1], [0.2, 5]) }],
@@ -84,7 +85,7 @@ function Ring({ fx }: { fx: Of<'ring'> }) {
 }
 
 function Blast({ fx }: { fx: Of<'blast'> }) {
-  const v = useProgress('blast', fx.delay);
+  const v = useProgress(FX_DURATION.blast, fx.delay);
   const motion = useAnimatedStyle(() => ({
     opacity: interpolate(v.get(), [0, 0.25, 1], [0, 0.95, 0]),
     transform: [{ scale: interpolate(v.get(), [0, 0.25, 1], [0.4, 1.05, 1.15]) }],
@@ -93,18 +94,41 @@ function Blast({ fx }: { fx: Of<'blast'> }) {
 }
 
 function Spark({ fx }: { fx: Of<'spark'> }) {
-  const v = useProgress('spark', fx.delay);
+  const total = fx.hold + FX_DURATION.spark;
+  const v = useProgress(total, fx.delay, LINEAR);
+  const rise = Math.min(60, fx.hold / 2) / total;
+  const fade = fx.hold / total;
   const motion = useAnimatedStyle(() => ({
-    opacity: interpolate(v.get(), [0, 0.3, 1], [0, 1, 0]),
-    transform: [{ scale: interpolate(v.get(), [0, 0.3, 1], [0.7, 1.15, 1]) }],
+    opacity: interpolate(v.get(), [0, rise, fade, 1], [0, 0.85, 0.85, 0]),
+    transform: [{ scale: interpolate(v.get(), [0, rise, fade, 1], [0.7, 1.12, 1, 1.1]) }],
   }));
   return <Animated.View style={[box(fx), styles.spark, motion]} />;
+}
+
+function Bolt({ fx }: { fx: Of<'bolt'> }) {
+  const v = useProgress(fx.duration, 0, LINEAR);
+  const at = fx.xs.map((_, k) => k / (fx.xs.length - 1));
+  const half = fx.size / 2;
+  const motion = useAnimatedStyle(() => ({
+    left: interpolate(v.get(), at, fx.xs) - half,
+    top: interpolate(v.get(), at, fx.ys) - half,
+    opacity: v.get() >= 1 ? 0 : 1,
+  }));
+  return (
+    <Animated.View
+      style={[
+        styles.bolt,
+        { width: fx.size, height: fx.size, borderRadius: half, boxShadow: glow(C.traceGlow, fx.size) },
+        motion,
+      ]}
+    />
+  );
 }
 
 const TEXT_SIZE = { points: 0.07, combo: 0.06, praise: 0.11 };
 
 function Pop({ fx, m }: { fx: Of<'points' | 'combo' | 'praise'>; m: Metrics }) {
-  const v = useProgress(fx.kind);
+  const v = useProgress(FX_DURATION[fx.kind], fx.delay);
   const fontSize = m.size * TEXT_SIZE[fx.kind];
   const praise = fx.kind === 'praise';
   const motion = useAnimatedStyle(() =>
@@ -152,6 +176,8 @@ function FxItem({ fx, m }: { fx: FxSpec; m: Metrics }) {
       return <Blast fx={fx} />;
     case 'spark':
       return <Spark fx={fx} />;
+    case 'bolt':
+      return <Bolt fx={fx} />;
     default:
       return <Pop fx={fx} m={m} />;
   }
@@ -190,6 +216,7 @@ const styles = StyleSheet.create({
     boxShadow: glow(C.surge, 14),
   },
   spark: { borderRadius: 4, backgroundColor: C.trace, boxShadow: glow(C.traceGlow, 10) },
+  bolt: { position: 'absolute', backgroundColor: '#fff' },
   pop: {
     position: 'absolute',
     textAlign: 'center',

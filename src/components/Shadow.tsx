@@ -12,7 +12,7 @@ function lit(target: number, lines: Clears, dr: number, dc: number) {
   if (target === NO_CELL) return false;
   const r = Math.floor(target / N) + dr;
   const c = (target % N) + dc;
-  return lines.rows.includes(r) || lines.cols.includes(c) || lines.path.includes(r * N + c);
+  return lines.rows.includes(r) || lines.cols.includes(c) || lines.circuit.includes(r * N + c);
 }
 
 function ShadowCell({ p, k, m, drag }: { p: Piece; k: number; m: Metrics; drag: DragShared }) {
