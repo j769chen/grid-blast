@@ -4,7 +4,9 @@ import Animated, {
   cancelAnimation,
   Easing,
   interpolate,
+  ReduceMotion,
   useAnimatedStyle,
+  useReducedMotion,
   useSharedValue,
   withDelay,
   withTiming,
@@ -22,12 +24,17 @@ const LINEAR = Easing.linear;
 
 type Of<K extends Fx['kind']> = Extract<Fx, { kind: K }>;
 
-function useProgress(duration: number, delay = 0, easing: EasingFunction = EASE_OUT): SharedValue<number> {
+function useProgress(
+  duration: number,
+  delay = 0,
+  easing: EasingFunction = EASE_OUT,
+  reduceMotion = ReduceMotion.System,
+): SharedValue<number> {
   const v = useSharedValue(0);
   useEffect(() => {
-    v.set(withDelay(delay, withTiming(1, { duration, easing })));
+    v.set(withDelay(delay, withTiming(1, { duration, easing, reduceMotion }), reduceMotion));
     return () => cancelAnimation(v);
-  }, [v, duration, delay, easing]);
+  }, [v, duration, delay, easing, reduceMotion]);
   return v;
 }
 
@@ -128,22 +135,25 @@ function Bolt({ fx }: { fx: Of<'bolt'> }) {
 const TEXT_SIZE = { points: 0.07, combo: 0.06, praise: 0.11 };
 
 function Pop({ fx, m }: { fx: Of<'points' | 'combo' | 'praise'>; m: Metrics }) {
-  const v = useProgress(FX_DURATION[fx.kind], fx.delay);
+  const still = useReducedMotion();
+  const v = useProgress(FX_DURATION[fx.kind], fx.delay, EASE_OUT, still ? ReduceMotion.Never : ReduceMotion.System);
   const fontSize = m.size * TEXT_SIZE[fx.kind];
   const praise = fx.kind === 'praise';
   const motion = useAnimatedStyle(() =>
-    praise
-      ? {
-          opacity: interpolate(v.get(), [0, 0.2, 0.8, 1], [0, 1, 1, 0]),
-          transform: [
-            { scale: interpolate(v.get(), [0, 0.2, 0.35, 1], [0.4, 1.1, 1, 1]) },
-            { translateY: interpolate(v.get(), [0.8, 1], [0, -fontSize * 0.3]) },
-          ],
-        }
-      : {
-          opacity: interpolate(v.get(), [0, 0.15, 0.7, 1], [0, 1, 1, 0]),
-          transform: [{ translateY: interpolate(v.get(), [0, 1], [10, -40]) }],
-        },
+    still
+      ? { opacity: interpolate(v.get(), [0, 0.15, 0.8, 1], [0, 1, 1, 0]) }
+      : praise
+        ? {
+            opacity: interpolate(v.get(), [0, 0.2, 0.8, 1], [0, 1, 1, 0]),
+            transform: [
+              { scale: interpolate(v.get(), [0, 0.2, 0.35, 1], [0.4, 1.1, 1, 1]) },
+              { translateY: interpolate(v.get(), [0.8, 1], [0, -fontSize * 0.3]) },
+            ],
+          }
+        : {
+            opacity: interpolate(v.get(), [0, 0.15, 0.7, 1], [0, 1, 1, 0]),
+            transform: [{ translateY: interpolate(v.get(), [0, 1], [10, -40]) }],
+          },
   );
   const look =
     fx.kind === 'praise'

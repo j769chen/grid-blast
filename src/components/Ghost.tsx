@@ -54,7 +54,8 @@ const LandingPiece = memo(function LandingPiece({
   m: Metrics;
   drag: DragShared;
 }) {
-  const style = useAnimatedStyle(() => at(drag.landing.get()[i]));
+  const { landing } = drag;
+  const style = useAnimatedStyle(() => at(landing.get()[i]));
   return <PieceView p={p} m={m} style={style} testID={`landing-${i}`} />;
 });
 

@@ -67,7 +67,7 @@ describe('Game', () => {
     await mount();
     await fireEvent(slot(1), 'accessibilityAction', activate);
     await fireEvent(slot(1), 'accessibilityAction', activate);
-    expect(slot(1).props.accessibilityState).toEqual({ selected: false });
+    expect(slot(1).props['aria-selected']).toBe(false);
     expect(announce.mock.calls.map(([text]) => text)).toEqual(['Chose U1. Pick a board square.', 'Put back U1.']);
   });
 
@@ -82,7 +82,7 @@ describe('Game', () => {
     await mount();
     await fireEvent(slot(1), 'accessibilityAction', activate);
     await restart();
-    expect(slot(1).props.accessibilityState).toEqual({ selected: false });
+    expect(slot(1).props['aria-selected']).toBe(false);
   });
 
   it('drops a pending circuit haptic when the game restarts', async () => {

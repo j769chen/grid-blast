@@ -78,11 +78,18 @@ export const Hud = memo(function Hud({ score, best, armed, m, onHelp, onRestart 
         </Animated.Text>
       </View>
       <View style={[styles.side, styles.tools]}>
-        <Pressable onPress={onHelp} accessibilityRole="button" accessibilityLabel="How to play" style={styles.btn}>
+        <Pressable
+          onPress={onHelp}
+          accessibilityRole="button"
+          accessibilityLabel="How to play"
+          hitSlop={4}
+          style={styles.btn}
+        >
           <Text style={styles.help}>?</Text>
         </Pressable>
         <Pressable
           onPress={onRestart}
+          hitSlop={4}
           accessibilityRole="button"
           accessibilityLabel={armed ? 'Confirm new game' : 'New game'}
           style={[styles.btn, armed && styles.armed]}
