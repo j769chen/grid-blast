@@ -2,21 +2,23 @@ import { memo } from 'react';
 import { StyleSheet } from 'react-native';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 
-import { NO_CELL, OFFSCREEN, type DragShared } from '../drag';
+import { NO_CELL, OFFSCREEN, type Clears, type DragShared } from '../drag';
 import { N, type Piece } from '../engine';
 import { PART_COLORS, span, type Metrics } from '../theme';
 import { Led } from './Led';
 
+function lit(target: number, lines: Clears, dr: number, dc: number) {
+  'worklet';
+  if (target === NO_CELL) return false;
+  const r = Math.floor(target / N) + dr;
+  const c = (target % N) + dc;
+  return lines.rows.includes(r) || lines.cols.includes(c) || lines.path.includes(r * N + c);
+}
+
 function ShadowCell({ p, k, m, drag }: { p: Piece; k: number; m: Metrics; drag: DragShared }) {
   const [dr, dc] = p.cells[k];
-  const lit = () => {
-    'worklet';
-    const code = drag.target.get();
-    const { rows, cols } = drag.lines.get();
-    return code !== NO_CELL && (rows.includes(Math.floor(code / N) + dr) || cols.includes((code % N) + dc));
-  };
-  const cell = useAnimatedStyle(() => ({ opacity: lit() ? 1 : 0.45 }));
-  const glare = useAnimatedStyle(() => ({ opacity: lit() ? 1 : 0 }));
+  const cell = useAnimatedStyle(() => ({ opacity: lit(drag.target.get(), drag.lines.get(), dr, dc) ? 1 : 0.45 }));
+  const glare = useAnimatedStyle(() => ({ opacity: lit(drag.target.get(), drag.lines.get(), dr, dc) ? 1 : 0 }));
   return (
     <Animated.View style={[styles.cell, { left: dc * m.pitch, top: dr * m.pitch }, cell]}>
       <Led color={PART_COLORS[p.c]} size={m.cell} b={m.b} glow={m.glow} core={k === p.core ? p.coreKind : null} />

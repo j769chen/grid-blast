@@ -92,6 +92,15 @@ function Blast({ fx }: { fx: Of<'blast'> }) {
   return <Animated.View style={[box(fx), styles.blast, motion]} />;
 }
 
+function Spark({ fx }: { fx: Of<'spark'> }) {
+  const v = useProgress('spark', fx.delay);
+  const motion = useAnimatedStyle(() => ({
+    opacity: interpolate(v.get(), [0, 0.3, 1], [0, 1, 0]),
+    transform: [{ scale: interpolate(v.get(), [0, 0.3, 1], [0.7, 1.15, 1]) }],
+  }));
+  return <Animated.View style={[box(fx), styles.spark, motion]} />;
+}
+
 const TEXT_SIZE = { points: 0.07, combo: 0.06, praise: 0.11 };
 
 function Pop({ fx, m }: { fx: Of<'points' | 'combo' | 'praise'>; m: Metrics }) {
@@ -141,6 +150,8 @@ function FxItem({ fx, m }: { fx: FxSpec; m: Metrics }) {
       return <Ring fx={fx} />;
     case 'blast':
       return <Blast fx={fx} />;
+    case 'spark':
+      return <Spark fx={fx} />;
     default:
       return <Pop fx={fx} m={m} />;
   }
@@ -178,6 +189,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,194,244,0.55)',
     boxShadow: glow(C.surge, 14),
   },
+  spark: { borderRadius: 4, backgroundColor: C.trace, boxShadow: glow(C.traceGlow, 10) },
   pop: {
     position: 'absolute',
     textAlign: 'center',

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { newGame } from '../engine';
+import { circuitPath, newGame } from '../engine';
 import { loadSaved, parseSave, saveGame, SAVE_VERSION } from '../storage';
 
 const game = (best = 0) => newGame(best, () => 0.5);
@@ -53,6 +53,15 @@ describe('version 1 saves', () => {
       expect(parsed.game.cores.filter(Boolean)).toHaveLength(1);
       expect(parsed.game.tray.every((p) => !p || p.coreKind === 'line')).toBe(true);
     }
+  });
+});
+
+describe('version 2 saves', () => {
+  it('gain unconnected terminals', () => {
+    const { terminals: _t, ...old } = game();
+    const parsed = parseSave(JSON.stringify({ v: 2, game: old, startBest: 0 }))!;
+    expect(parsed.game.terminals.row).toBeGreaterThanOrEqual(3);
+    expect(circuitPath(parsed.game.grid, parsed.game.terminals)).toBeNull();
   });
 });
 

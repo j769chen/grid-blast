@@ -1,9 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { isGameState, type GameState } from './engine';
+import { isGameState, N, pickTerminals, type GameState } from './engine';
 
 const KEY = { game: 'overclock.game', best: 'overclock.best', haptics: 'overclock.haptics' };
-export const SAVE_VERSION = 2;
+export const SAVE_VERSION = 3;
 
 export interface SavedGame {
   game: GameState;
@@ -38,6 +38,13 @@ function fromV1(x: unknown): unknown {
   };
 }
 
+function fromV2(x: unknown): unknown {
+  if (!x || typeof x !== 'object' || 'terminals' in x) return x;
+  const g = x as Record<string, unknown>;
+  const grid = Array.isArray(g.grid) && g.grid.length === N * N ? (g.grid as number[]) : [];
+  return { ...g, terminals: pickTerminals(grid) };
+}
+
 export function parseSave(raw: string | null): SavedGame | null {
   let data: unknown;
   try {
@@ -47,12 +54,12 @@ export function parseSave(raw: string | null): SavedGame | null {
   }
   if (!data || typeof data !== 'object') return null;
   if (!('v' in data)) {
-    const legacy = fromV1(data);
+    const legacy = fromV2(fromV1(data));
     return isGameState(legacy) ? { game: legacy, startBest: legacy.best } : null;
   }
   const { v, game: stored, startBest } = data as { v: unknown; game: unknown; startBest: unknown };
-  const game = v === 1 ? fromV1(stored) : stored;
-  if ((v !== 1 && v !== SAVE_VERSION) || !isGameState(game)) return null;
+  const game = v === 1 ? fromV2(fromV1(stored)) : v === 2 ? fromV2(stored) : stored;
+  if ((v !== 1 && v !== 2 && v !== SAVE_VERSION) || !isGameState(game)) return null;
   const start = typeof startBest === 'number' && startBest >= 0 && startBest <= game.best ? startBest : game.best;
   return { game, startBest: start };
 }

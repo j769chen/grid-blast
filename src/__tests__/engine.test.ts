@@ -4,12 +4,14 @@ import {
   anyMove,
   blastCells,
   cellIndex,
+  circuitPath,
   fits,
   isGameState,
   makePiece,
   N,
   newGame,
   newTray,
+  pickTerminals,
   placePiece,
   rotate,
   SHAPES,
@@ -48,6 +50,7 @@ function blank(tray: (Piece | null)[], over: Partial<GameState> = {}): GameState
   return {
     grid: Array(N * N).fill(-1),
     cores: Array(N * N).fill(null),
+    terminals: { row: 3, col: 3 },
     tray,
     score: 0,
     best: 0,
@@ -126,11 +129,12 @@ describe('placePiece', () => {
 
   it('scores multi-line clears as 50·n·(n+1) and awards a board clear', () => {
     const s = blank([single(), single(), single()]);
-    for (let i = 0; i < N; i++) {
-      if (i !== 0) s.grid[i] = 1;
-      if (i !== 0) s.grid[i * N] = 1;
+    for (let i = 0; i < N - 1; i++) {
+      s.grid[cellIndex(7, i)] = 1;
+      s.grid[cellIndex(i, 7)] = 1;
     }
-    const res = placePiece(s, 0, 0, 0, seeded())!;
+    const res = placePiece(s, 0, 7, 7, seeded())!;
+    expect(res.circuit).toEqual([]);
     expect(res.lineCount).toBe(2);
     expect(res.perfect).toBe(true);
     expect(res.gained).toBe(10 + 300 + 3000);
@@ -238,6 +242,8 @@ describe('isGameState', () => {
     expect(isGameState(tweak((s) => ((s.tray as Piece[])[0].core = 99)))).toBe(false);
     expect(isGameState(tweak((s) => (s.tray as unknown[]).pop()))).toBe(false);
     expect(isGameState(tweak((s) => ((s.cores as unknown[])[0] = true)))).toBe(false);
+    expect(isGameState(tweak((s) => delete s.terminals))).toBe(false);
+    expect(isGameState(tweak((s) => (s.terminals = { row: 9, col: 3 })))).toBe(false);
     expect(isGameState(tweak((s) => ((s.tray as Piece[])[0].coreKind = 'huge' as Piece['coreKind'])))).toBe(false);
   });
 });
@@ -380,5 +386,77 @@ describe('area cores', () => {
       newTray(Array(N * N).fill(-1), seeded(seed)).forEach((p) => p.core >= 0 && kinds.add(p.coreKind));
     }
     expect([...kinds].sort()).toEqual(['area', 'line']);
+  });
+});
+
+describe('circuits', () => {
+  const terminals = { row: 4, col: 3 };
+  const route: [number, number][] = [
+    [4, 0],
+    [3, 0],
+    [2, 0],
+    [1, 0],
+    [0, 0],
+    [0, 1],
+    [0, 2],
+    [0, 3],
+  ];
+  const wired = (skip = -1) => {
+    const s = blank([single(), single(), single()], { terminals });
+    route.forEach(([r, c], k) => k !== skip && (s.grid[cellIndex(r, c)] = 2));
+    s.grid[cellIndex(6, 6)] = 4;
+    return s;
+  };
+
+  it('finds the shortest chain of filled squares between the terminals', () => {
+    const s = wired();
+    s.grid[cellIndex(1, 1)] = 2;
+    expect(circuitPath(s.grid, terminals)).toEqual(route.map(([r, c]) => cellIndex(r, c)));
+  });
+
+  it('needs an unbroken chain touching both terminals', () => {
+    expect(circuitPath(wired(2).grid, terminals)).toBeNull();
+    expect(circuitPath(wired(0).grid, terminals)).toBeNull();
+    expect(circuitPath(wired(7).grid, terminals)).toBeNull();
+  });
+
+  it('clears the path, scores 50 per square, counts as a clear and moves the terminals', () => {
+    const s = wired(2);
+    const res = placePiece(s, 0, 2, 0, seeded())!;
+    expect(res.circuit).toHaveLength(route.length);
+    expect(route.every(([r, c]) => res.state.grid[cellIndex(r, c)] === -1)).toBe(true);
+    expect(res.gained).toBe(10 + route.length * 50);
+    expect(res.state.combo).toBe(1);
+    expect(res.state.terminals).not.toEqual(terminals);
+    expect(circuitPath(res.state.grid, res.state.terminals)).toBeNull();
+  });
+
+  it('detonates cores on the path', () => {
+    const s = wired(2);
+    s.cores[cellIndex(0, 1)] = 'area';
+    s.grid[cellIndex(1, 2)] = 5;
+    const res = placePiece(s, 0, 2, 0, seeded())!;
+    expect(res.surges).toEqual([{ idx: cellIndex(0, 1), kind: 'area' }]);
+    expect(res.state.grid[cellIndex(1, 2)]).toBe(-1);
+    expect(res.gained).toBe(10 + route.length * 50 + 40);
+  });
+
+  it('adds the circuit to line clears in the same move', () => {
+    const s = wired(2);
+    for (let c = 1; c < N; c++) s.grid[cellIndex(2, c)] = 1;
+    const res = placePiece(s, 0, 2, 0, seeded())!;
+    expect(res.lineCount).toBe(1);
+    expect(res.gained).toBe(10 + 100 + route.length * 50);
+  });
+
+  it('never deals terminals that are already connected', () => {
+    for (let seed = 1; seed <= 60; seed++) {
+      const g = newGame(0, seeded(seed));
+      expect(circuitPath(g.grid, g.terminals)).toBeNull();
+      expect(g.terminals.row).toBeGreaterThanOrEqual(3);
+      expect(g.terminals.col).toBeGreaterThanOrEqual(3);
+    }
+    const s = wired();
+    expect(circuitPath(s.grid, pickTerminals(s.grid, seeded(5)))).toBeNull();
   });
 });
