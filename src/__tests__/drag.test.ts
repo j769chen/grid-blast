@@ -12,11 +12,12 @@ import {
   nearestCell,
   NO_CELL,
   targetCell,
+  type Clears,
   type DragShared,
   type Point,
   type SlotGeo,
 } from '../drag';
-import { N, type Lines } from '../engine';
+import { cellIndex, N } from '../engine';
 
 const empty = () => Array<number>(N * N).fill(-1);
 const square: SlotGeo = { w: 0, h: 0, pw: 2, ph: 2, cells: [0, 0, 0, 1, 1, 0, 1, 1] };
@@ -82,7 +83,8 @@ function drag(touch: { x: number; y: number }, mouse: boolean, back = [1, 1, 1])
     back: sv(back),
     shrink: sv(0.5),
     target: sv(NO_CELL),
-    lines: sv<Lines>({ rows: [], cols: [] }),
+    lines: sv<Clears>({ rows: [], cols: [], path: [] }),
+    terminals: sv({ row: 4, col: 4 }),
   };
 }
 
@@ -128,16 +130,34 @@ describe('returnFrame', () => {
 });
 
 describe('completedLines', () => {
+  const far = { row: 7, col: 7 };
+
   it('lists the rows and columns a placement would complete', () => {
     const grid = empty();
     for (let c = 2; c < N; c++) grid[c] = 1;
     for (let r = 2; r < N; r++) grid[r * N + 1] = 1;
-    expect(completedLines(grid, square, encodeCell(0, 0))).toEqual({ rows: [0], cols: [1] });
+    expect(completedLines(grid, square, encodeCell(0, 0), far)).toEqual({ rows: [0], cols: [1], path: [] });
+  });
+
+  it('includes the circuit a placement would complete', () => {
+    const grid = empty();
+    [
+      [4, 0],
+      [3, 0],
+      [0, 1],
+      [0, 2],
+      [0, 3],
+    ].forEach(([r, c]) => (grid[cellIndex(r, c)] = 1));
+    const path = completedLines(grid, square, encodeCell(1, 0), { row: 4, col: 3 }).path;
+    expect(path[0]).toBe(cellIndex(4, 0));
+    expect(path.at(-1)).toBe(cellIndex(0, 3));
+    expect(path).toContain(cellIndex(1, 0));
   });
 
   it('is empty with no target, no part, or nothing completed', () => {
-    expect(completedLines(empty(), square, NO_CELL)).toEqual({ rows: [], cols: [] });
-    expect(completedLines(empty(), null, encodeCell(0, 0))).toEqual({ rows: [], cols: [] });
-    expect(completedLines(empty(), square, encodeCell(3, 3))).toEqual({ rows: [], cols: [] });
+    const none = { rows: [], cols: [], path: [] };
+    expect(completedLines(empty(), square, NO_CELL, far)).toEqual(none);
+    expect(completedLines(empty(), null, encodeCell(0, 0), far)).toEqual(none);
+    expect(completedLines(empty(), square, encodeCell(3, 3), far)).toEqual(none);
   });
 });

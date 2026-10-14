@@ -1,6 +1,6 @@
 import type { SharedValue } from 'react-native-reanimated';
 
-import { N, type Lines } from './engine';
+import { circuitPath, N, type Lines, type Terminals } from './engine';
 
 export const DRAG_GAIN = 1.4;
 export const LIFT_CELLS = 1.93;
@@ -11,6 +11,10 @@ export const OFFSCREEN = -9999;
 export interface Point {
   x: number;
   y: number;
+}
+
+export interface Clears extends Lines {
+  path: number[];
 }
 
 export interface Slot extends Point {
@@ -39,7 +43,8 @@ export interface DragShared {
   back: SharedValue<number[]>;
   shrink: SharedValue<number>;
   target: SharedValue<number>;
-  lines: SharedValue<Lines>;
+  lines: SharedValue<Clears>;
+  terminals: SharedValue<Terminals>;
 }
 
 export function returnFrame(d: DragShared, i: number) {
@@ -105,29 +110,29 @@ export function targetCell(frame: Point, field: Point, pitch: number, grid: numb
   return nearestCell(grid, g, (frame.y - field.y) / pitch, (frame.x - field.x) / pitch);
 }
 
-export function completedLines(grid: number[], g: SlotGeo | null, code: number): Lines {
+export function completedLines(grid: number[], g: SlotGeo | null, code: number, t: Terminals): Clears {
   'worklet';
   const rows: number[] = [];
   const cols: number[] = [];
-  if (!g || code === NO_CELL || grid.length !== N * N) return { rows, cols };
+  if (!g || code === NO_CELL || grid.length !== N * N) return { rows, cols, path: [] };
   const r0 = Math.floor(code / N);
   const c0 = code % N;
-  const filled = grid.map((v) => v >= 0);
-  for (let k = 0; k < g.cells.length; k += 2) filled[(r0 + g.cells[k]) * N + c0 + g.cells[k + 1]] = true;
+  const placed = grid.slice();
+  for (let k = 0; k < g.cells.length; k += 2) placed[(r0 + g.cells[k]) * N + c0 + g.cells[k + 1]] = 0;
   for (let i = 0; i < N; i++) {
     let row = true;
     let col = true;
     for (let j = 0; j < N; j++) {
-      if (!filled[i * N + j]) row = false;
-      if (!filled[j * N + i]) col = false;
+      if (placed[i * N + j] < 0) row = false;
+      if (placed[j * N + i] < 0) col = false;
     }
     if (row) rows.push(i);
     if (col) cols.push(i);
   }
-  return { rows, cols };
+  return { rows, cols, path: circuitPath(placed, t) ?? [] };
 }
 
-export function sameLines(a: Lines, b: Lines) {
+export function sameLines(a: Clears, b: Clears) {
   'worklet';
-  return a.rows.join() === b.rows.join() && a.cols.join() === b.cols.join();
+  return a.rows.join() === b.rows.join() && a.cols.join() === b.cols.join() && a.path.join() === b.path.join();
 }

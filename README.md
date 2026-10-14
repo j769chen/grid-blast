@@ -26,6 +26,13 @@ npx expo start
 - Press the Rotate button under a part to turn it 90° clockwise. Rotations are free and unlimited.
 - A glowing Rotate button means that part only fits after rotating. A greyed-out part doesn't fit in any rotation.
 
+## Circuits
+
+- A power input (+) sits beside one row on the left edge, and an output (−) above one column on the top edge.
+- Connect them with an unbroken chain of filled squares, touching edge to edge, to complete a circuit.
+- The shortest path lights up and clears, scoring 50 points per square. It counts as a clearing move for combos, and any cores on the path detonate.
+- The terminals then move to new spots that aren't already connected. While dragging, a placement that would complete a circuit highlights its path.
+
 ## Cores
 
 - Some sets include a part with a glowing core cell. Cores come in two kinds:
@@ -40,6 +47,7 @@ npx expo start
 - Clearing n lines in one move scores 50·n·(n+1) (100, 300, 600, 1,000…), multiplied by the current combo.
 - Each extra cell destroyed by a core adds 40.
 - The combo grows with each clearing move and resets after 3 moves in a row without a clear.
+- Completing a circuit adds 50 per square on its path.
 - Emptying the whole board adds 3,000.
 
 Peak score, the game in progress, and the vibration setting are saved on the device (AsyncStorage, which is `localStorage` on the web).

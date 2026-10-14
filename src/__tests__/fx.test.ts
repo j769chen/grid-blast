@@ -11,6 +11,7 @@ function state(tray: (Piece | null)[], over: Partial<GameState> = {}): GameState
   return {
     grid: Array(N * N).fill(-1),
     cores: Array(N * N).fill(null),
+    terminals: { row: 3, col: 3 },
     tray,
     score: 0,
     best: 0,
@@ -39,12 +40,12 @@ describe('buildFx', () => {
     expect(texts(one, 0, 0)).toEqual(['points:+110']);
 
     const two = state([single(), single(), single()], { combo: 1 });
-    for (let i = 1; i < N; i++) {
-      two.grid[i] = 1;
-      two.grid[i * N] = 1;
+    for (let i = 0; i < N - 1; i++) {
+      two.grid[cellIndex(7, i)] = 1;
+      two.grid[cellIndex(i, 7)] = 1;
     }
     two.grid[cellIndex(5, 5)] = 2;
-    expect(texts(two, 0, 0)).toEqual(['points:+610', 'praise:Double!', 'combo:Combo 2']);
+    expect(texts(two, 7, 7)).toEqual(['points:+610', 'praise:Double!', 'combo:Combo 2']);
   });
 
   it('headlines surges and board clears', () => {
@@ -79,5 +80,22 @@ describe('buildFx', () => {
     const blast = items.find((it) => it.kind === 'blast');
     expect(blast).toMatchObject({ x: 3 * m.pitch, y: 0, w: span(3, m), h: span(2, m) });
     expect(items.some((it) => it.kind === 'trace' && it.surge)).toBe(false);
+  });
+
+  it('sparks along a completed circuit and headlines it', () => {
+    const s = state([single(), single(), single()], { terminals: { row: 3, col: 3 } });
+    [
+      [3, 0],
+      [2, 0],
+      [1, 0],
+      [0, 1],
+      [0, 2],
+      [0, 3],
+      [6, 6],
+    ].forEach(([r, c]) => (s.grid[cellIndex(r, c)] = 2));
+    const res = placePiece(s, 0, 0, 0, () => 0.5)!;
+    const items = buildFx(res, m);
+    expect(items.filter((it) => it.kind === 'spark')).toHaveLength(res.circuit.length);
+    expect(texts(s, 0, 0)).toContain('praise:Circuit!');
   });
 });

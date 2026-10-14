@@ -6,8 +6,8 @@ import { makeMutable } from 'react-native-reanimated';
 import { Board } from '../components/Board';
 import { Tray } from '../components/Tray';
 import { describeCell, describePiece } from '../describe';
-import { NO_CELL, OFFSCREEN, type DragShared, type Point, type SlotGeo } from '../drag';
-import { cellIndex, makePiece, N, type CoreKind, type Lines, type Piece } from '../engine';
+import { NO_CELL, OFFSCREEN, type Clears, type DragShared, type Point, type SlotGeo } from '../drag';
+import { cellIndex, makePiece, N, type CoreKind, type Piece } from '../engine';
 import { metrics } from '../theme';
 
 const m = metrics(390, 800);
@@ -29,7 +29,8 @@ function drag(): DragShared {
     back: makeMutable(slots.map(() => 1)),
     shrink: makeMutable(0.5),
     target: makeMutable(NO_CELL),
-    lines: makeMutable<Lines>({ rows: [], cols: [] }),
+    lines: makeMutable<Clears>({ rows: [], cols: [], path: [] }),
+    terminals: makeMutable({ row: 4, col: 4 }),
   };
 }
 
@@ -52,6 +53,7 @@ async function board(placing: Piece | null) {
       drag={drag()}
       placing={placing}
       onPlaceAt={onPlaceAt}
+      terminals={{ row: 4, col: 2 }}
     />,
   );
   return onPlaceAt;
@@ -72,6 +74,8 @@ describe('Board', () => {
     await board(null);
     expect(screen.getByLabelText('A1, empty')).toBeTruthy();
     expect(screen.getByLabelText('B2, red, area core')).toBeTruthy();
+    expect(screen.getByLabelText('E1, empty, next to power in')).toBeTruthy();
+    expect(screen.getByLabelText('A3, empty, next to power out')).toBeTruthy();
     expect(screen.getByLabelText('A1, empty').props.accessibilityActions).toBeUndefined();
   });
 

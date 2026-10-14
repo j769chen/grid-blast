@@ -3,7 +3,8 @@ export const TRAY_SIZE = 3;
 export const COLOR_COUNT = 7;
 export const CORE_CHANCE = 0.4;
 export const AREA_CHANCE = 0.5;
-export const PTS = { cell: 10, line: 100, core: 40, perfect: 3000 };
+export const PTS = { cell: 10, line: 100, core: 40, circuit: 50, perfect: 3000 };
+export const TERMINAL_MIN = 3;
 
 export type Rand = () => number;
 
@@ -25,9 +26,15 @@ export interface Surge {
   kind: CoreKind;
 }
 
+export interface Terminals {
+  row: number;
+  col: number;
+}
+
 export interface GameState {
   grid: number[];
   cores: (CoreKind | null)[];
+  terminals: Terminals;
   tray: (Piece | null)[];
   score: number;
   best: number;
@@ -49,6 +56,7 @@ export interface PlaceResult {
   lineSet: Set<number>;
   cleared: { idx: number; color: number }[];
   surges: Surge[];
+  circuit: number[];
   perfect: boolean;
   dealt: boolean;
   center: { r: number; c: number };
@@ -197,6 +205,43 @@ export function blastCells(k: number, kind: CoreKind) {
   return out;
 }
 
+export function circuitPath(grid: number[], t: Terminals): number[] | null {
+  'worklet';
+  const start = t.row * N;
+  const goal = t.col;
+  if (grid[start] < 0 || grid[goal] < 0) return null;
+  const prev: number[] = new Array(N * N).fill(-2);
+  prev[start] = -1;
+  const queue = [start];
+  for (let head = 0; head < queue.length; head++) {
+    const k = queue[head];
+    if (k === goal) {
+      const path: number[] = [];
+      for (let x = k; x >= 0; x = prev[x]) path.push(x);
+      return path.reverse();
+    }
+    const r = Math.floor(k / N);
+    const c = k % N;
+    const next = [r > 0 ? k - N : -1, r < N - 1 ? k + N : -1, c > 0 ? k - 1 : -1, c < N - 1 ? k + 1 : -1];
+    for (const x of next) {
+      if (x < 0 || grid[x] < 0 || prev[x] !== -2) continue;
+      prev[x] = k;
+      queue.push(x);
+    }
+  }
+  return null;
+}
+
+export function pickTerminals(grid: number[], rand: Rand = Math.random, avoid?: Terminals): Terminals {
+  const span = N - TERMINAL_MIN;
+  for (let t = 0; t < 60; t++) {
+    const next = { row: TERMINAL_MIN + Math.floor(rand() * span), col: TERMINAL_MIN + Math.floor(rand() * span) };
+    if (avoid && next.row === avoid.row && next.col === avoid.col) continue;
+    if (!circuitPath(grid, next)) return next;
+  }
+  return { row: N - 1, col: N - 1 };
+}
+
 export function newTray(grid: number[], rand: Rand = Math.random): Piece[] {
   for (let t = 0; t < 40; t++) {
     const colors = shuffle(
@@ -240,10 +285,12 @@ function seed(rand: Rand) {
 
 export function newGame(best: number, rand: Rand = Math.random): GameState {
   const grid = seed(rand);
+  const tray = newTray(grid, rand);
   return {
     grid,
     cores: Array(N * N).fill(null),
-    tray: newTray(grid, rand),
+    terminals: pickTerminals(grid, rand),
+    tray,
     score: 0,
     best,
     combo: 0,
@@ -283,12 +330,14 @@ export function placePiece(
   const lines = fullLines(grid);
   const lineCount = lines.rows.length + lines.cols.length;
   const lineSet = lineCells(lines);
+  const circuit = circuitPath(grid, s.terminals) ?? [];
+  const base = new Set([...lineSet, ...circuit]);
   const surges: Surge[] = [];
   const cleared: { idx: number; color: number }[] = [];
   let perfect = false;
 
-  if (lineCount) {
-    const hit = new Set(lineSet);
+  if (base.size) {
+    const hit = new Set(base);
     const seen = new Set<number>();
     const queue = [...hit].filter((k) => cores[k]);
     while (queue.length) {
@@ -303,10 +352,10 @@ export function placePiece(
         if (cores[x]) queue.push(x);
       }
     }
-    const extra = hit.size - lineSet.size;
+    const extra = hit.size - base.size;
     combo += 1;
     idle = 0;
-    gained += ((PTS.line * lineCount * (lineCount + 1)) / 2) * combo + extra * PTS.core;
+    gained += ((PTS.line * lineCount * (lineCount + 1)) / 2) * combo + extra * PTS.core + circuit.length * PTS.circuit;
     hit.forEach((k) => {
       cleared.push({ idx: k, color: grid[k] });
       grid[k] = -1;
@@ -324,8 +373,19 @@ export function placePiece(
   const dealt = tray.every((x) => !x);
   if (dealt) tray = newTray(grid, rand);
 
+  const terminals = circuit.length ? pickTerminals(grid, rand, s.terminals) : s.terminals;
   const score = s.score + gained;
-  const next: GameState = { grid, cores, tray, score, best: Math.max(s.best, score), combo, idle, over: false };
+  const next: GameState = {
+    grid,
+    cores,
+    terminals,
+    tray,
+    score,
+    best: Math.max(s.best, score),
+    combo,
+    idle,
+    over: false,
+  };
   next.over = !anyMove(next);
 
   return {
@@ -336,6 +396,7 @@ export function placePiece(
     lineSet,
     cleared,
     surges,
+    circuit,
     perfect,
     dealt,
     center: { r: r + p.h / 2, c: c + p.w / 2 },
@@ -360,7 +421,8 @@ function isPiece(x: unknown): x is Piece {
 export function isGameState(x: unknown): x is GameState {
   if (!x || typeof x !== 'object') return false;
   const g = x as Record<string, unknown>;
-  const { grid, cores, tray } = g;
+  const { grid, cores, tray, terminals } = g;
+  const t = terminals as Record<string, unknown> | null;
   return (
     Array.isArray(grid) &&
     grid.length === N * N &&
@@ -375,6 +437,10 @@ export function isGameState(x: unknown): x is GameState {
     isInt(g.best, 0, Number.MAX_SAFE_INTEGER) &&
     isInt(g.combo, 0, Number.MAX_SAFE_INTEGER) &&
     isInt(g.idle, 0, Number.MAX_SAFE_INTEGER) &&
-    typeof g.over === 'boolean'
+    typeof g.over === 'boolean' &&
+    !!t &&
+    typeof t === 'object' &&
+    isInt(t.row, 0, N - 1) &&
+    isInt(t.col, 0, N - 1)
   );
 }

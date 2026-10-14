@@ -1,10 +1,10 @@
 import { memo, type Ref } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View, type ViewStyle } from 'react-native';
 
 import type { DragShared } from '../drag';
 import { COL_LABELS, describeCell, ROW_LABELS } from '../describe';
-import { fits, N, type CoreKind, type Piece } from '../engine';
-import { C, F, PART_COLORS, type Metrics } from '../theme';
+import { fits, N, type CoreKind, type Piece, type Terminals } from '../engine';
+import { C, F, glow, PART_COLORS, type Metrics } from '../theme';
 import type { FxSpec } from '../fx';
 import { FxLayer } from './Fx';
 import { Led, Pad } from './Led';
@@ -27,9 +27,20 @@ interface BoardProps {
   drag: DragShared;
   placing: Piece | null;
   onPlaceAt: (r: number, c: number) => void;
+  terminals: Terminals;
 }
 
 const PLACE = [{ name: 'activate' as const, label: 'Place here' }];
+
+function Terminal({ sign, size, style }: { sign: string; size: number; style: ViewStyle }) {
+  return (
+    <View aria-hidden style={[styles.terminal, style]}>
+      <View style={[styles.port, { width: size, height: size, borderRadius: size }]}>
+        <Text style={[styles.sign, { fontSize: size * 0.75, lineHeight: size }]}>{sign}</Text>
+      </View>
+    </View>
+  );
+}
 
 export const Board = memo(function Board({
   grid,
@@ -43,6 +54,7 @@ export const Board = memo(function Board({
   drag,
   placing,
   onPlaceAt,
+  terminals,
 }: BoardProps) {
   const origin = m.pad + m.gut;
   const labelSize = m.size * 0.03;
@@ -59,7 +71,17 @@ export const Board = memo(function Board({
       <View
         key={i}
         accessible
-        accessibilityLabel={describeCell(r, c, grid[i], cores[i])}
+        accessibilityLabel={describeCell(
+          r,
+          c,
+          grid[i],
+          cores[i],
+          c === 0 && r === terminals.row
+            ? 'next to power in'
+            : r === 0 && c === terminals.col
+              ? 'next to power out'
+              : '',
+        )}
         accessibilityRole={open ? 'button' : undefined}
         accessibilityHint={
           placing
@@ -93,44 +115,62 @@ export const Board = memo(function Board({
         >
           OC-1
         </Text>
-        {COL_LABELS.map((label, c) => (
-          <Text
-            aria-hidden
-            key={label}
-            style={[
-              styles.silk,
-              {
-                left: origin + c * m.pitch,
-                top: m.pad,
-                width: m.cell,
-                height: m.gut,
-                lineHeight: m.gut,
-                fontSize: labelSize,
-              },
-            ]}
-          >
-            {label}
-          </Text>
-        ))}
-        {ROW_LABELS.map((label, r) => (
-          <Text
-            aria-hidden
-            key={label}
-            style={[
-              styles.silk,
-              {
-                left: m.pad,
-                top: origin + r * m.pitch,
-                width: m.gut,
-                height: m.cell,
-                lineHeight: m.cell,
-                fontSize: labelSize,
-              },
-            ]}
-          >
-            {label}
-          </Text>
-        ))}
+        {COL_LABELS.map((label, c) =>
+          c === terminals.col ? (
+            <Terminal
+              key={label}
+              sign="−"
+              size={m.gut * 0.8}
+              style={{ left: origin + c * m.pitch, top: m.pad, width: m.cell, height: m.gut }}
+            />
+          ) : (
+            <Text
+              aria-hidden
+              key={label}
+              style={[
+                styles.silk,
+                {
+                  left: origin + c * m.pitch,
+                  top: m.pad,
+                  width: m.cell,
+                  height: m.gut,
+                  lineHeight: m.gut,
+                  fontSize: labelSize,
+                },
+              ]}
+            >
+              {label}
+            </Text>
+          ),
+        )}
+        {ROW_LABELS.map((label, r) =>
+          r === terminals.row ? (
+            <Terminal
+              key={label}
+              sign="+"
+              size={m.gut * 0.8}
+              style={{ left: m.pad, top: origin + r * m.pitch, width: m.gut, height: m.cell }}
+            />
+          ) : (
+            <Text
+              aria-hidden
+              key={label}
+              style={[
+                styles.silk,
+                {
+                  left: m.pad,
+                  top: origin + r * m.pitch,
+                  width: m.gut,
+                  height: m.cell,
+                  lineHeight: m.cell,
+                  fontSize: labelSize,
+                },
+              ]}
+            >
+              {label}
+            </Text>
+          ),
+        )}
         <View
           ref={fieldRef}
           style={{ position: 'absolute', left: origin, top: origin, width: m.field, height: m.field }}
@@ -149,5 +189,15 @@ const styles = StyleSheet.create({
   outline: { padding: 4, borderRadius: 12, borderWidth: 1, borderColor: C.silkLine, backgroundColor: C.maskDeep },
   board: { borderRadius: 8, backgroundColor: C.maskDark },
   edge: { ...StyleSheet.absoluteFill, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(212,173,98,0.55)' },
+  terminal: { position: 'absolute', alignItems: 'center', justifyContent: 'center' },
+  port: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: C.pad,
+    backgroundColor: C.ink,
+    boxShadow: glow(C.pad, 5, 0.9),
+  },
+  sign: { color: C.pad, fontFamily: F.bold, textAlign: 'center' },
   silk: { position: 'absolute', textAlign: 'center', color: C.silkDim, fontFamily: F.mono },
 });

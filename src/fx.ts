@@ -23,6 +23,7 @@ export type Fx =
   | ({ kind: 'trace'; axis: 'h' | 'v'; surge: boolean } & Box)
   | ({ kind: 'ring' } & Box)
   | ({ kind: 'blast' } & Box)
+  | ({ kind: 'spark' } & Box)
   | ({ kind: 'points' | 'combo' } & Label)
   | ({ kind: 'praise'; surge: boolean } & Label);
 
@@ -33,6 +34,7 @@ export const FX_DURATION: Record<Fx['kind'], number> = {
   trace: 450,
   ring: 600,
   blast: 550,
+  spark: 420,
   points: 900,
   praise: 1100,
   combo: 900,
@@ -43,7 +45,7 @@ let fxId = 0;
 
 export function buildFx(res: PlaceResult, m: Metrics): FxSpec[] {
   const items: FxSpec[] = [];
-  if (!res.lineCount) return items;
+  if (!res.lineCount && !res.circuit.length) return items;
   const add = (it: Fx) => items.push({ ...it, id: ++fxId });
 
   res.lines.rows.forEach((r) =>
@@ -69,6 +71,18 @@ export function buildFx(res: PlaceResult, m: Metrics): FxSpec[] {
     add({ kind: 'ring', x: kc * m.pitch, y: kr * m.pitch, w: m.cell, h: m.cell, delay });
   });
 
+  res.circuit.forEach((idx, k) =>
+    add({
+      kind: 'spark',
+      x: (idx % N) * m.pitch,
+      y: Math.floor(idx / N) * m.pitch,
+      w: m.cell,
+      h: m.cell,
+      delay: k * 35,
+    }),
+  );
+  const onPath = new Map(res.circuit.map((idx, k) => [idx, k]));
+
   const { r: pr, c: pc } = res.center;
   res.cleared.forEach(({ idx, color }) => {
     const r = Math.floor(idx / N);
@@ -81,7 +95,7 @@ export function buildFx(res: PlaceResult, m: Metrics): FxSpec[] {
       w: m.cell,
       h: m.cell,
       color: PART_COLORS[color],
-      delay: res.lineSet.has(idx) ? dist * 28 : 260 + dist * 20,
+      delay: onPath.has(idx) ? 150 + onPath.get(idx)! * 35 : res.lineSet.has(idx) ? dist * 28 : 260 + dist * 20,
     });
   });
 
@@ -89,16 +103,24 @@ export function buildFx(res: PlaceResult, m: Metrics): FxSpec[] {
   const surges = res.surges.length;
   const headline = res.perfect
     ? 'Board clear!'
-    : surges > 1
-      ? `Surge ×${surges}!`
-      : surges
-        ? 'Surge!'
-        : res.lineCount >= 2
-          ? PRAISE[Math.min(res.lineCount, PRAISE.length - 1)]
-          : '';
+    : res.circuit.length
+      ? 'Circuit!'
+      : surges > 1
+        ? `Surge ×${surges}!`
+        : surges
+          ? 'Surge!'
+          : res.lineCount >= 2
+            ? PRAISE[Math.min(res.lineCount, PRAISE.length - 1)]
+            : '';
   let y = m.pitch * 3.2;
   if (headline) {
-    add({ kind: 'praise', x: m.pitch * 4, y, text: headline, surge: surges > 0 && !res.perfect });
+    add({
+      kind: 'praise',
+      x: m.pitch * 4,
+      y,
+      text: headline,
+      surge: surges > 0 && !res.perfect && !res.circuit.length,
+    });
     y += m.pitch * 1.2;
   }
   if (res.state.combo >= 2) add({ kind: 'combo', x: m.pitch * 4, y, text: `Combo ${res.state.combo}` });

@@ -13,11 +13,12 @@ import {
   sameLines,
   targetCell,
   type DragShared,
+  type Clears,
   type Point,
   type Slot,
   type SlotGeo,
 } from './drag';
-import { cellIndex, N, TRAY_SIZE, type GameState, type Lines, type Piece } from './engine';
+import { cellIndex, N, TRAY_SIZE, type GameState, type Piece, type Terminals } from './engine';
 import type { Buzz } from './haptics';
 import { PART_COLORS, span, type Metrics } from './theme';
 
@@ -69,15 +70,31 @@ export function useDragGestures({ state, stateRef, m, onPlace, haptic }: Options
   const back = useSharedValue(DONE);
   const shrink = useSharedValue((m.mini + m.miniGap) / m.pitch);
   const target = useSharedValue(NO_CELL);
-  const lines = useSharedValue<Lines>({ rows: [], cols: [] });
+  const lines = useSharedValue<Clears>({ rows: [], cols: [], path: [] });
+  const terminals = useSharedValue<Terminals>({ row: -1, col: -1 });
   const enabled = useSharedValue(false);
   const moved = useSharedValue(false);
   const mouse = useSharedValue(false);
   const landing = useSharedValue<(Point | null)[]>(SLOTS.map(() => null));
   const events = useSharedValue<DragEvent[]>([]);
   const drag = useMemo<DragShared>(
-    () => ({ slot: dragSlot, touch, origin, pitch, mouse, geo, landing, slots, missFrom, back, shrink, target, lines }),
-    [dragSlot, touch, origin, pitch, mouse, geo, landing, slots, missFrom, back, shrink, target, lines],
+    () => ({
+      slot: dragSlot,
+      touch,
+      origin,
+      pitch,
+      mouse,
+      geo,
+      landing,
+      slots,
+      missFrom,
+      back,
+      shrink,
+      target,
+      lines,
+      terminals,
+    }),
+    [dragSlot, touch, origin, pitch, mouse, geo, landing, slots, missFrom, back, shrink, target, lines, terminals],
   );
 
   useEffect(() => {
@@ -87,10 +104,11 @@ export function useDragGestures({ state, stateRef, m, onPlace, haptic }: Options
       ),
     );
     grid.set(state?.grid ?? []);
+    terminals.set(state?.terminals ?? { row: -1, col: -1 });
     pitch.set(m.pitch);
     shrink.set((m.mini + m.miniGap) / m.pitch);
     enabled.set(!!state && !state.over);
-  }, [state, m, geo, grid, pitch, shrink, enabled]);
+  }, [state, m, geo, grid, terminals, pitch, shrink, enabled]);
 
   useEffect(() => {
     const done = released.current.splice(0);
@@ -127,10 +145,10 @@ export function useDragGestures({ state, stateRef, m, onPlace, haptic }: Options
   );
 
   const onLines = useCallback(
-    (next: Lines) => {
+    (next: Clears) => {
       const d = dragRef.current;
       const s = stateRef.current;
-      if (!d || !s || (!next.rows.length && !next.cols.length)) {
+      if (!d || !s || (!next.rows.length && !next.cols.length && !next.path.length)) {
         setPreview(null);
         return;
       }
@@ -139,6 +157,7 @@ export function useDragGestures({ state, stateRef, m, onPlace, haptic }: Options
         next.rows.forEach((r) => s.grid[cellIndex(r, j)] >= 0 && hint.add(cellIndex(r, j)));
         next.cols.forEach((c) => s.grid[cellIndex(j, c)] >= 0 && hint.add(cellIndex(j, c)));
       }
+      next.path.forEach((k) => s.grid[k] >= 0 && hint.add(k));
       setPreview({ hint, color: PART_COLORS[d.p.c] });
     },
     [stateRef],
@@ -186,7 +205,7 @@ export function useDragGestures({ state, stateRef, m, onPlace, haptic }: Options
       if (code === prev) return;
       target.set(code);
       const i = dragSlot.get();
-      const next = completedLines(grid.get(), i < 0 ? null : geo.get()[i], code);
+      const next = completedLines(grid.get(), i < 0 ? null : geo.get()[i], code, terminals.get());
       if (sameLines(next, lines.get())) return;
       lines.set(next);
       scheduleOnRN(onLines, next);

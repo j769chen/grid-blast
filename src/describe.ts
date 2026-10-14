@@ -11,8 +11,8 @@ export function describePiece(p: Piece) {
   return `${PART_NAMES[p.c]} ${p.cells.length}-cell part, ${p.w} wide by ${p.h} tall${core}`;
 }
 
-export function describeCell(r: number, c: number, color: number, core: CoreKind | null) {
+export function describeCell(r: number, c: number, color: number, core: CoreKind | null, note = '') {
   const name = `${ROW_LABELS[r]}${COL_LABELS[c]}`;
-  if (color < 0) return `${name}, empty`;
-  return `${name}, ${PART_NAMES[color]}${core ? `, ${CORE_NAMES[core]}` : ''}`;
+  const contents = color < 0 ? 'empty' : `${PART_NAMES[color]}${core ? `, ${CORE_NAMES[core]}` : ''}`;
+  return `${name}, ${contents}${note ? `, ${note}` : ''}`;
 }

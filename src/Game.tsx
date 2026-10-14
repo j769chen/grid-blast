@@ -121,7 +121,7 @@ export default function Game() {
         setFx((f) => [...f, ...items]);
         setTimeout(() => setFx((f) => f.filter((it) => !ids.has(it.id))), FX_LIFETIME);
       }
-      haptic(!res.lineCount ? 'light' : res.surges.length || res.perfect ? 'heavy' : 'medium');
+      haptic(res.surges.length || res.perfect || res.circuit.length ? 'heavy' : res.lineCount ? 'medium' : 'light');
       return res;
     },
     [commit, dealAll, haptic],
@@ -163,8 +163,9 @@ export default function Game() {
       setChosen(null);
       if (!res) return;
       const cleared = res.lineCount ? `${res.lineCount} ${res.lineCount > 1 ? 'lines' : 'line'} cleared. ` : '';
+      const circuit = res.circuit.length ? 'Circuit complete. ' : '';
       const over = res.state.over ? ' No part fits. Game over.' : '';
-      AccessibilityInfo.announceForAccessibility(`Placed. ${cleared}Score ${fmt(res.state.score)}.${over}`);
+      AccessibilityInfo.announceForAccessibility(`Placed. ${circuit}${cleared}Score ${fmt(res.state.score)}.${over}`);
     },
     [selected, place],
   );
@@ -220,6 +221,7 @@ export default function Game() {
           drag={drag}
           placing={selected === null ? null : state.tray[selected]}
           onPlaceAt={placeAt}
+          terminals={state.terminals}
         />
         <Tray
           tray={state.tray}
