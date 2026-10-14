@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { circuitPath, MIN_CIRCUIT, newGame, shortestCircuit } from '../engine';
-import { clearSavedGame, loadSaved, parseSave, saveGame, saveHelpSeen, SAVE_VERSION } from '../storage';
+import { cellIndex, circuitPath, MIN_CIRCUIT, newGame, shortestCircuit, type Terminals } from '../engine';
+import { clearSavedGame, loadSaved, parseSave, saveGame, saveHaptics, saveHelpSeen, SAVE_VERSION } from '../storage';
 
 const game = (best = 0) => newGame(best, () => 0.5);
 const stored = (key: string) => AsyncStorage.getItem(key);
@@ -27,7 +27,9 @@ describe('parseSave', () => {
   it('rejects missing, malformed and unknown-version saves', () => {
     expect(parseSave(null)).toBeNull();
     expect(parseSave('{not json')).toBeNull();
-    expect(parseSave(JSON.stringify({ v: SAVE_VERSION + 1, game: game(), startBest: 0 }))).toBeNull();
+    for (const v of [0, SAVE_VERSION + 1, 2.5, String(SAVE_VERSION)]) {
+      expect(parseSave(JSON.stringify({ v, game: game(), startBest: 0 }))).toBeNull();
+    }
     expect(parseSave(JSON.stringify({ v: SAVE_VERSION, game: { ...game(), tray: [] }, startBest: 0 }))).toBeNull();
   });
 
@@ -38,11 +40,23 @@ describe('parseSave', () => {
       startBest: 400,
     });
     expect(parseSave(JSON.stringify({ v: SAVE_VERSION, game: g, startBest: 5000 }))?.startBest).toBe(900);
+    for (const startBest of [-1, '400', null]) {
+      expect(parseSave(JSON.stringify({ v: SAVE_VERSION, game: g, startBest }))?.startBest).toBe(900);
+    }
   });
 
   it('reads a legacy unversioned save', () => {
     const g = { ...game(), best: 300 };
     expect(parseSave(JSON.stringify(g))).toEqual({ game: g, startBest: 300 });
+  });
+
+  it('repairs a legacy save whose terminals are already connected', () => {
+    const terminals: Terminals = { plus: { side: 'left', at: 0 }, minus: { side: 'top', at: 6 } };
+    const g = { ...game(), terminals };
+    for (let c = 0; c < 8; c++) g.grid[cellIndex(0, c)] = c < 7 ? 1 : -1;
+    expect(circuitPath(g.grid, terminals)).not.toBeNull();
+    const parsed = parseSave(JSON.stringify(g))!;
+    expect(circuitPath(parsed.game.grid, parsed.game.terminals)).toBeNull();
   });
 });
 
@@ -65,6 +79,25 @@ describe('version 1 saves', () => {
       expect(parsed.game.cores.filter(Boolean)).toHaveLength(1);
       expect(parsed.game.tray.every((p) => !p || p.coreKind === 'line')).toBe(true);
     }
+  });
+
+  it('from before terminals migrate through every version to a playable game', () => {
+    const { terminals: _t, ...g } = game();
+    const filled = g.grid.findIndex((v) => v >= 0);
+    const old = {
+      ...g,
+      cores: g.cores.map((_, k) => k === filled),
+      tray: g.tray.map((p) => {
+        if (!p) return p;
+        const { coreKind: _kind, ...rest } = p;
+        return rest;
+      }),
+    };
+    const parsed = parseSave(JSON.stringify({ v: 1, game: old, startBest: 0 }))!;
+    expect(parsed.game.cores[filled]).toBe('line');
+    expect(parsed.game.tray.every((p) => !p || p.coreKind === 'line')).toBe(true);
+    expect(shortestCircuit(parsed.game.terminals)).toBeGreaterThanOrEqual(MIN_CIRCUIT);
+    expect(circuitPath(parsed.game.grid, parsed.game.terminals)).toBeNull();
   });
 });
 
@@ -112,6 +145,16 @@ describe('version 4 saves', () => {
 });
 
 describe('loadSaved and saveGame', () => {
+  it('load back exactly the game that was saved', async () => {
+    const base = game();
+    const g = { ...base, score: 1234, best: 1234, combo: 2, idle: 1, tray: [null, base.tray[1], base.tray[2]] };
+    g.cores[g.grid.findIndex((v) => v >= 0)] = 'area';
+    await loadSaved();
+    saveGame(g, 250);
+    await flush();
+    expect((await loadSaved()).saved).toEqual({ game: g, startBest: 250 });
+  });
+
   it('writes a versioned game and only raises the stored best', async () => {
     await AsyncStorage.setItem('overclock.best', '500');
     expect((await loadSaved()).best).toBe(500);
@@ -155,6 +198,18 @@ describe('loadSaved and saveGame', () => {
     await flush();
     expect(await stored('overclock.best')).toBe('900');
     expect(await stored('overclock.game')).toBe('kept');
+  });
+});
+
+describe('vibration setting', () => {
+  it('is on until switched off, and remembers each change', async () => {
+    expect((await loadSaved()).haptics).toBe(true);
+    saveHaptics(false);
+    await flush();
+    expect((await loadSaved()).haptics).toBe(false);
+    saveHaptics(true);
+    await flush();
+    expect((await loadSaved()).haptics).toBe(true);
   });
 });
 
