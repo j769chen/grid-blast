@@ -114,3 +114,41 @@ describe('buildFx', () => {
     expect(items.find((it) => it.kind === 'praise')).toMatchObject({ text: 'Circuit!', delay: boom });
   });
 });
+
+describe('effect timing', () => {
+  const bursts = (items: ReturnType<typeof buildFx>) =>
+    new Map(items.flatMap((it) => (it.kind === 'burst' ? [[it.cell, it.delay ?? 0] as const] : [])));
+
+  it('ripples out from the centre of the placed part', () => {
+    const s = state([single(), single(), single()]);
+    for (let c = 1; c < N; c++) s.grid[c] = 1;
+    const delays = bursts(
+      buildFx(
+        placePiece(s, 0, 0, 0, () => 0.5)!,
+        m,
+      ),
+    );
+    for (let c = 1; c < N; c++) expect(delays.get(c)!).toBeGreaterThan(delays.get(c - 1)!);
+  });
+
+  it('bursts squares only after the core that blasted them goes off', () => {
+    const s = state([single(), single(), single()]);
+    for (let c = 1; c < N; c++) s.grid[c] = 1;
+    s.cores[cellIndex(0, 1)] = 'line';
+    s.grid[cellIndex(2, 1)] = 2;
+    s.cores[cellIndex(2, 1)] = 'area';
+    s.grid[cellIndex(3, 2)] = 2;
+    s.cores[cellIndex(3, 2)] = 'area';
+    s.grid[cellIndex(4, 3)] = 3;
+    const items = buildFx(
+      placePiece(s, 0, 0, 0, () => 0.5)!,
+      m,
+    );
+    const [third] = items.flatMap((it) =>
+      it.kind === 'ring' && it.x === 2 * m.pitch && it.y === 3 * m.pitch ? [it.delay ?? 0] : [],
+    );
+    const delays = bursts(items);
+    expect(delays.get(cellIndex(4, 3))!).toBeGreaterThan(third);
+    expect(delays.get(cellIndex(3, 2))!).toBeGreaterThan(third);
+  });
+});

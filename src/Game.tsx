@@ -9,7 +9,16 @@ import { GhostLayer } from './components/Ghost';
 import { Help } from './components/Help';
 import { Hud } from './components/Hud';
 import { Tray, type SlotAnim } from './components/Tray';
-import { anyMove, newGame, placePiece, spinPiece, TRAY_SIZE, type GameState, type Terminals } from './engine';
+import {
+  anyMove,
+  cellIndex,
+  newGame,
+  placePiece,
+  spinPiece,
+  TRAY_SIZE,
+  type GameState,
+  type Terminals,
+} from './engine';
 import { fmt } from './format';
 import { buildFx, circuitDelay, FX_LIFETIME, type FxSpec } from './fx';
 import { buzz, type Buzz } from './haptics';
@@ -42,6 +51,7 @@ export default function Game() {
   const mRef = useRef(m);
   const hapticsRef = useRef(true);
   const helpSeen = useRef(true);
+  const timers = useRef(new Set<ReturnType<typeof setTimeout>>());
   const startBest = useRef(0);
   useEffect(() => {
     mRef.current = m;
@@ -51,6 +61,21 @@ export default function Game() {
   }, [hapticsOn]);
 
   const haptic = useCallback((kind: Buzz) => buzz(hapticsRef.current, kind), []);
+
+  const later = useCallback((run: () => void, ms: number) => {
+    const t = setTimeout(() => {
+      timers.current.delete(t);
+      run();
+    }, ms);
+    timers.current.add(t);
+  }, []);
+
+  const cancelTimers = useCallback(() => {
+    timers.current.forEach(clearTimeout);
+    timers.current.clear();
+  }, []);
+
+  useEffect(() => cancelTimers, [cancelTimers]);
 
   const commit = useCallback((next: GameState) => {
     stateRef.current = next;
@@ -62,14 +87,16 @@ export default function Game() {
 
   const startGame = useCallback(
     (best: number) => {
+      cancelTimers();
       startBest.current = best;
       commit(newGame(best));
       setOverVisible(false);
       setFx([]);
       setWired(null);
+      setChosen(null);
       dealAll();
     },
-    [commit, dealAll],
+    [commit, dealAll, cancelTimers],
   );
 
   useEffect(() => {
@@ -120,15 +147,18 @@ export default function Game() {
     (i: number, r: number, c: number) => {
       const s = stateRef.current;
       if (!s) return null;
+      const p = s.tray[i];
       const res = placePiece(s, i, r, c);
-      if (!res) return null;
+      if (!p || !res) return null;
       commit(res.state);
+      setChosen((cur) => (cur === i || res.dealt ? null : cur));
       if (res.dealt) dealAll();
+      const covered = new Set(p.cells.map(([dr, dc]) => cellIndex(r + dr, c + dc)));
       const items = buildFx(res, mRef.current);
+      setFx((f) => [...f.filter((it) => !('cell' in it && covered.has(it.cell))), ...items]);
       if (items.length) {
         const ids = new Set(items.map((it) => it.id));
-        setFx((f) => [...f, ...items]);
-        setTimeout(() => setFx((f) => f.filter((it) => !ids.has(it.id))), FX_LIFETIME);
+        later(() => setFx((f) => f.filter((it) => !ids.has(it.id))), FX_LIFETIME);
       }
       const kind =
         res.surges.length || res.perfect || res.circuit.length ? 'heavy' : res.lineCount ? 'medium' : 'light';
@@ -136,7 +166,7 @@ export default function Game() {
       if (boom) {
         haptic('light');
         setWired(res.wired);
-        setTimeout(() => {
+        later(() => {
           haptic(kind);
           setWired((w) => (w === res.wired ? null : w));
         }, boom);
@@ -145,7 +175,7 @@ export default function Game() {
       }
       return res;
     },
-    [commit, dealAll, haptic],
+    [commit, dealAll, haptic, later],
   );
 
   const { rootRef, fieldRef, slotRefs, measureLayout, gestures, drag, held, preview, isDragging } = useDragGestures({
@@ -171,11 +201,18 @@ export default function Game() {
 
   const selected = chosen !== null && state?.tray[chosen] && !state.over ? chosen : null;
 
-  const choose = useCallback((i: number) => {
-    setChosen((cur) => (cur === i ? null : i));
-    const s = stateRef.current;
-    if (s?.tray[i]) AccessibilityInfo.announceForAccessibility(`Chose U${i + 1}. Pick a board square.`);
-  }, []);
+  const choose = useCallback(
+    (i: number) => {
+      const s = stateRef.current;
+      if (!s?.tray[i] || s.over) return;
+      const next = selected === i ? null : i;
+      setChosen(next);
+      AccessibilityInfo.announceForAccessibility(
+        next === null ? `Put back U${i + 1}.` : `Chose U${i + 1}. Pick a board square.`,
+      );
+    },
+    [selected],
+  );
 
   const placeAt = useCallback(
     (r: number, c: number) => {
@@ -214,6 +251,7 @@ export default function Game() {
       startGame(s.best);
     } else {
       setArmed(true);
+      AccessibilityInfo.announceForAccessibility('Tap again to start a new game.');
     }
   }, [armed, startGame]);
 
@@ -228,7 +266,10 @@ export default function Game() {
   return (
     <View ref={rootRef} onLayout={measureLayout} style={styles.root}>
       <Background />
-      <View style={[styles.column, { paddingTop: insets.top + 12, paddingBottom: insets.bottom + 12 }]}>
+      <View
+        aria-hidden={overVisible}
+        style={[styles.column, { paddingTop: insets.top + 12, paddingBottom: insets.bottom + 12 }]}
+      >
         <Hud score={state.score} best={state.best} armed={armed} m={m} onHelp={openHelp} onRestart={restart} />
         <Board
           grid={state.grid}

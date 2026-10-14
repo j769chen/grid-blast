@@ -296,6 +296,15 @@ export function pickTerminals(grid: number[], rand: Rand = Math.random, avoid?: 
   return pool[Math.floor(rand() * pool.length)];
 }
 
+export function repairGame(g: GameState): GameState {
+  const usable = shortestCircuit(g.terminals) >= MIN_CIRCUIT && !circuitPath(g.grid, g.terminals);
+  return {
+    ...g,
+    cores: g.cores.map((kind, k) => (g.grid[k] >= 0 ? kind : null)),
+    terminals: usable ? g.terminals : pickTerminals(g.grid),
+  };
+}
+
 export function newTray(grid: number[], rand: Rand = Math.random): Piece[] {
   for (let t = 0; t < 40; t++) {
     const colors = shuffle(

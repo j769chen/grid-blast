@@ -14,8 +14,8 @@ interface GameOverProps {
 export function GameOver({ visible, score, best, newBest, onAgain }: GameOverProps) {
   if (!visible) return null;
   return (
-    <View style={styles.scrim}>
-      <View style={styles.card} accessibilityViewIsModal>
+    <View style={styles.scrim} aria-modal>
+      <View style={styles.card}>
         <Text style={styles.eyebrow}>Short circuit</Text>
         <Text style={styles.sub}>No part fits the board.</Text>
         <Text style={styles.final} numberOfLines={1} adjustsFontSizeToFit>

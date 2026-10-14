@@ -49,7 +49,7 @@ export interface Metrics {
 }
 
 export function metrics(width: number, height: number): Metrics {
-  const size = Math.max(240, Math.min(width - 20, 440, (height - 168) / 1.36));
+  const size = Math.max(120, Math.min(width - 20, 440, (height - 168) / 1.36));
   const pad = Math.round(size * 0.02);
   const gut = Math.round(size * 0.05);
   const field = size - pad * 2 - gut * 2;

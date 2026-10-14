@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { circuitPath, MIN_CIRCUIT, newGame, shortestCircuit } from '../engine';
-import { loadSaved, parseSave, saveGame, saveHelpSeen, SAVE_VERSION } from '../storage';
+import { clearSavedGame, loadSaved, parseSave, saveGame, saveHelpSeen, SAVE_VERSION } from '../storage';
 
 const game = (best = 0) => newGame(best, () => 0.5);
 const stored = (key: string) => AsyncStorage.getItem(key);
@@ -38,9 +38,10 @@ describe('parseSave', () => {
 describe('version 1 saves', () => {
   it('migrate boolean cores to line cores', () => {
     const g = game();
+    const filled = g.grid.findIndex((v) => v >= 0);
     const old = {
       ...g,
-      cores: g.cores.map((_, k) => k === 9),
+      cores: g.cores.map((_, k) => k === filled),
       tray: g.tray.map((p) => {
         if (!p) return p;
         const { coreKind: _kind, ...rest } = p;
@@ -49,7 +50,7 @@ describe('version 1 saves', () => {
     };
     for (const raw of [JSON.stringify({ v: 1, game: old, startBest: 0 }), JSON.stringify(old)]) {
       const parsed = parseSave(raw)!;
-      expect(parsed.game.cores[9]).toBe('line');
+      expect(parsed.game.cores[filled]).toBe('line');
       expect(parsed.game.cores.filter(Boolean)).toHaveLength(1);
       expect(parsed.game.tray.every((p) => !p || p.coreKind === 'line')).toBe(true);
     }
@@ -86,6 +87,12 @@ describe('version 5 saves', () => {
 });
 
 describe('version 4 saves', () => {
+  it('get new terminals when the old row and column were too close for a circuit', () => {
+    const old = { ...game(), terminals: { row: 1, col: 1 } };
+    const parsed = parseSave(JSON.stringify({ v: 4, game: old, startBest: 0 }))!;
+    expect(shortestCircuit(parsed.game.terminals)).toBeGreaterThanOrEqual(MIN_CIRCUIT);
+  });
+
   it('turn row and column terminals into left and top edge terminals', () => {
     const old = { ...game(), terminals: { row: 5, col: 2 } };
     const parsed = parseSave(JSON.stringify({ v: 4, game: old, startBest: 0 }))!;
@@ -104,6 +111,26 @@ describe('loadSaved and saveGame', () => {
     saveGame({ ...game(), score: 600, best: 600 }, 0);
     await flush();
     expect(await stored('overclock.best')).toBe('600');
+  });
+
+  it('ignores a stored best that is not a whole number in range', async () => {
+    for (const raw of ['1e400', '1e17', '12.5', '-3', 'abc']) {
+      await AsyncStorage.setItem('overclock.best', raw);
+      expect((await loadSaved()).best).toBe(0);
+    }
+    await AsyncStorage.setItem('overclock.best', '500');
+    expect((await loadSaved()).best).toBe(500);
+  });
+
+  it('only clears a saved game it was able to read', async () => {
+    await AsyncStorage.setItem('overclock.game', 'kept');
+    jest.mocked(AsyncStorage.getItem).mockImplementationOnce(() => Promise.reject(new Error('io')));
+    await loadSaved();
+    await clearSavedGame();
+    expect(await stored('overclock.game')).toBe('kept');
+    await loadSaved();
+    await clearSavedGame();
+    expect(await stored('overclock.game')).toBeNull();
   });
 
   it('does not overwrite saves it failed to read', async () => {

@@ -20,7 +20,7 @@ const SCORING: [string, string][] = [
   ['Each square placed', fmt(PTS.cell)],
   ...[1, 2, 3, 4].map((n): [string, string] => [`${n} line${n > 1 ? 's' : ''} at once`, fmt(lineScore(n))]),
   ['Each square on a circuit path', fmt(PTS.circuit)],
-  ['Each square touching the path', fmt(PTS.core)],
+  ['Each square touching the path, outside cleared lines', fmt(PTS.core)],
   ['Each extra square a core blasts', fmt(PTS.core)],
   ['Emptying the board', fmt(PTS.perfect)],
 ];
