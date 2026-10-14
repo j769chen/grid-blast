@@ -25,6 +25,7 @@
   },
   "devDependencies": {
     "@jest/globals": "29.7.0",
+    "@testing-library/react-native": "^14.1.0",
     "@types/react": "~19.2.2",
     "eslint": "^9.0.0",
     "eslint-config-expo": "~57.0.2",
@@ -47,6 +48,10 @@
   },
   "private": true,
   "jest": {
-    "preset": "jest-expo"
+    "preset": "jest-expo",
+    "setupFiles": [
+      "./jest.setup.ts"
+    ],
+    "resolver": "react-native-worklets/jest/resolver.js"
   }
 }

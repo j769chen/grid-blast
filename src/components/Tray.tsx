@@ -10,11 +10,14 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
+import { describePiece } from '../describe';
 import type { DragShared } from '../drag';
 import { turnsToFit, type Piece } from '../engine';
 import { C, F, glow, PART_COLORS, type Metrics } from '../theme';
 import { RotateIcon } from './Icons';
 import { Led } from './Led';
+
+const CHOOSE = [{ name: 'activate' as const, label: 'Choose' }];
 
 export interface SlotAnim {
   key: number;
@@ -82,6 +85,8 @@ interface TrayProps {
   onTrayLayout: () => void;
   drag: DragShared;
   onRotate: (i: number) => void;
+  selected: number | null;
+  onSelect: (i: number) => void;
 }
 
 export const Tray = memo(function Tray({
@@ -94,6 +99,8 @@ export const Tray = memo(function Tray({
   onTrayLayout,
   drag,
   onRotate,
+  selected,
+  onSelect,
 }: TrayProps) {
   const turns = tray.map((p) => (p ? turnsToFit(grid, p) : -1));
   return (
@@ -101,7 +108,17 @@ export const Tray = memo(function Tray({
       <View style={[styles.row, { height: m.size * 0.34 }]}>
         {tray.map((p, i) => (
           <GestureDetector key={i} gesture={gestures[i]}>
-            <View ref={slotRefs[i]} style={styles.slot}>
+            <View
+              ref={slotRefs[i]}
+              accessible
+              accessibilityRole={p ? 'button' : undefined}
+              accessibilityLabel={p ? `U${i + 1}, ${describePiece(p)}` : `U${i + 1}, empty`}
+              accessibilityHint={p ? 'Chooses this part, then pick a board square to place it' : undefined}
+              accessibilityState={{ selected: selected === i }}
+              accessibilityActions={p ? CHOOSE : undefined}
+              onAccessibilityAction={p ? () => onSelect(i) : undefined}
+              style={[styles.slot, selected === i && styles.chosen]}
+            >
               <Text style={styles.label}>U{i + 1}</Text>
               {p && (
                 <HideWhileDragged i={i} drag={drag}>
@@ -161,6 +178,7 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
     color: C.silkDim,
   },
+  chosen: { borderStyle: 'solid', borderWidth: 2, borderColor: C.pad },
   rotCell: { flex: 1, alignItems: 'center' },
   rot: {
     height: 34,
