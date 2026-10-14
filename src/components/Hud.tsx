@@ -1,8 +1,15 @@
 import { memo, useEffect, useRef, useState } from 'react';
-import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSequence,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 
 import { fmt } from '../format';
-import { C, F, NATIVE_DRIVER, type Metrics } from '../theme';
+import { C, F, type Metrics } from '../theme';
 import { RestartIcon, VibrateIcon } from './Icons';
 
 interface HudProps {
@@ -35,12 +42,12 @@ function useCountUp(target: number) {
 
 export const Hud = memo(function Hud({ score, best, hapticsOn, armed, m, onToggleHaptics, onRestart }: HudProps) {
   const shown = useCountUp(score);
-  const [bump] = useState(() => new Animated.Value(1));
+  const bump = useSharedValue(1);
+  const bumpStyle = useAnimatedStyle(() => ({ transform: [{ scale: bump.get() }] }));
 
   useEffect(() => {
     if (!score) return;
-    bump.setValue(1.1);
-    Animated.spring(bump, { toValue: 1, friction: 5, useNativeDriver: NATIVE_DRIVER }).start();
+    bump.set(withSequence(withTiming(1.1, { duration: 0 }), withSpring(1, { stiffness: 230, damping: 16 })));
   }, [score, bump]);
 
   return (
@@ -58,8 +65,8 @@ export const Hud = memo(function Hud({ score, best, hapticsOn, armed, m, onToggl
             {
               fontSize: Math.min(54, Math.max(38, m.size * 0.12)),
               maxWidth: m.size * 0.46,
-              transform: [{ scale: bump }],
             },
+            bumpStyle,
           ]}
           numberOfLines={1}
           adjustsFontSizeToFit

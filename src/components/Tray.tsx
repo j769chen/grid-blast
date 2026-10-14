@@ -1,11 +1,18 @@
-import { memo, useEffect, useState, type ReactNode, type Ref } from 'react';
-import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
+import { memo, useEffect, type ReactNode, type Ref } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { GestureDetector, type PanGesture } from 'react-native-gesture-handler';
-import Reanimated, { useAnimatedStyle } from 'react-native-reanimated';
+import Animated, {
+  Easing,
+  interpolate,
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withTiming,
+} from 'react-native-reanimated';
 
 import type { DragShared } from '../drag';
 import { turnsToFit, type Piece } from '../engine';
-import { C, F, glow, NATIVE_DRIVER, PART_COLORS, type Metrics } from '../theme';
+import { C, F, glow, PART_COLORS, type Metrics } from '../theme';
 import { RotateIcon } from './Icons';
 import { Led } from './Led';
 
@@ -15,38 +22,34 @@ export interface SlotAnim {
 }
 
 function MiniPiece({ p, m, kind, index }: { p: Piece; m: Metrics; kind: SlotAnim['kind']; index: number }) {
-  const [v] = useState(() => new Animated.Value(0));
+  const v = useSharedValue(0);
   useEffect(() => {
-    Animated.timing(v, {
-      toValue: 1,
-      duration: kind === 'deal' ? 300 : 220,
-      delay: kind === 'deal' ? index * 50 : 0,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: NATIVE_DRIVER,
-    }).start();
+    const deal = kind === 'deal';
+    v.set(
+      withDelay(deal ? index * 50 : 0, withTiming(1, { duration: deal ? 300 : 220, easing: Easing.out(Easing.cubic) })),
+    );
   }, [v, kind, index]);
+  const motion = useAnimatedStyle(() =>
+    kind === 'deal'
+      ? {
+          opacity: v.get(),
+          transform: [
+            { translateY: interpolate(v.get(), [0, 1], [24, 0]) },
+            { scale: interpolate(v.get(), [0, 1], [0.6, 1]) },
+          ],
+        }
+      : {
+          opacity: 1,
+          transform: [
+            { rotate: `${interpolate(v.get(), [0, 1], [-90, 0])}deg` },
+            { scale: interpolate(v.get(), [0, 1], [0.85, 1]) },
+          ],
+        },
+  );
 
   const step = m.mini + m.miniGap;
-  const transform =
-    kind === 'deal'
-      ? [
-          { translateY: v.interpolate({ inputRange: [0, 1], outputRange: [24, 0] }) },
-          { scale: v.interpolate({ inputRange: [0, 1], outputRange: [0.6, 1] }) },
-        ]
-      : [
-          { rotate: v.interpolate({ inputRange: [0, 1], outputRange: ['-90deg', '0deg'] }) },
-          { scale: v.interpolate({ inputRange: [0, 1], outputRange: [0.85, 1] }) },
-        ];
-
   return (
-    <Animated.View
-      style={{
-        width: p.w * step - m.miniGap,
-        height: p.h * step - m.miniGap,
-        opacity: kind === 'deal' ? v : 1,
-        transform,
-      }}
-    >
+    <Animated.View style={[{ width: p.w * step - m.miniGap, height: p.h * step - m.miniGap }, motion]}>
       {p.cells.map(([r, c], k) => (
         <View key={k} style={{ position: 'absolute', left: c * step, top: r * step }}>
           <Led
@@ -66,7 +69,7 @@ function HideWhileDragged({ i, drag, children }: { i: number; drag: DragShared; 
   const style = useAnimatedStyle(() => ({
     opacity: drag.slot.get() === i || drag.landing.get()[i] || drag.back.get()[i] < 1 ? 0 : 1,
   }));
-  return <Reanimated.View style={style}>{children}</Reanimated.View>;
+  return <Animated.View style={style}>{children}</Animated.View>;
 }
 
 interface TrayProps {
