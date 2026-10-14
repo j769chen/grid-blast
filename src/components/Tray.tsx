@@ -5,7 +5,7 @@ import Reanimated, { useAnimatedStyle } from 'react-native-reanimated';
 
 import type { DragShared } from '../drag';
 import { turnsToFit, type Piece } from '../engine';
-import { C, F, NATIVE_DRIVER, PART_COLORS, type Metrics } from '../theme';
+import { C, F, glow, NATIVE_DRIVER, PART_COLORS, type Metrics } from '../theme';
 import { RotateIcon } from './Icons';
 import { Led } from './Led';
 
@@ -172,10 +172,7 @@ const styles = StyleSheet.create({
   },
   rotReady: {
     borderColor: C.pad,
-    shadowColor: C.pad,
-    shadowOpacity: 0.6,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 0 },
+    boxShadow: glow(C.pad, 8, 0.6),
   },
   rotText: { fontFamily: F.mono, fontSize: 11, letterSpacing: 1.3, textTransform: 'uppercase', color: C.silk },
 });

@@ -2,7 +2,7 @@ import { memo, useEffect, useMemo, useState } from 'react';
 import { Animated, Easing, StyleSheet, View, type EasingFunction } from 'react-native';
 
 import { FX_DURATION, type Fx, type FxSpec } from '../fx';
-import { C, F, NATIVE_DRIVER, type Metrics } from '../theme';
+import { C, F, glow, NATIVE_DRIVER, type Metrics } from '../theme';
 import { Led } from './Led';
 
 const EASE_IN = Easing.in(Easing.quad);
@@ -159,29 +159,20 @@ const styles = StyleSheet.create({
   trace: {
     borderRadius: 4,
     backgroundColor: C.trace,
-    shadowColor: C.traceGlow,
-    shadowOpacity: 1,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 0 },
+    boxShadow: glow(C.traceGlow, 10),
   },
-  surgeTrace: { backgroundColor: C.surgeTrace, shadowColor: C.surge },
+  surgeTrace: { backgroundColor: C.surgeTrace, boxShadow: glow(C.surge, 10) },
   ring: {
     borderWidth: 3,
     borderColor: '#fff',
-    shadowColor: C.surge,
-    shadowOpacity: 1,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 0 },
+    boxShadow: glow(C.surge, 12),
   },
   blast: {
     borderRadius: 6,
     borderWidth: 3,
     borderColor: '#fff',
     backgroundColor: 'rgba(255,194,244,0.55)',
-    shadowColor: C.surge,
-    shadowOpacity: 1,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 0 },
+    boxShadow: glow(C.surge, 14),
   },
   pop: {
     position: 'absolute',
