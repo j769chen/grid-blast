@@ -6,6 +6,7 @@ import {
   DRAG_GAIN,
   encodeCell,
   ghostFrame,
+  returnFrame,
   LIFT_CELLS,
   nearestCell,
   NO_CELL,
@@ -58,7 +59,7 @@ describe('nearestCell radius', () => {
 
 const sv = <T>(value: T) => ({ get: () => value }) as unknown as SharedValue<T>;
 
-function drag(touch: { x: number; y: number }, mouse: boolean): DragShared {
+function drag(touch: { x: number; y: number }, mouse: boolean, back = [1, 1, 1]): DragShared {
   return {
     slot: sv(0),
     touch: sv(touch),
@@ -67,6 +68,18 @@ function drag(touch: { x: number; y: number }, mouse: boolean): DragShared {
     mouse: sv(mouse),
     geo: sv<(SlotGeo | null)[]>([{ ...square, w: 78, h: 78 }, null, null]),
     landing: sv<(Point | null)[]>([null, null, null]),
+    slots: sv([
+      { x: 20, y: 600, w: 120, h: 100 },
+      { x: 150, y: 600, w: 120, h: 100 },
+      { x: 280, y: 600, w: 120, h: 100 },
+    ]),
+    missFrom: sv([
+      { x: 200, y: 300 },
+      { x: 0, y: 0 },
+      { x: 0, y: 0 },
+    ]),
+    back: sv(back),
+    shrink: sv(0.5),
   };
 }
 
@@ -92,5 +105,21 @@ describe('targetCell', () => {
     const field = { x: 20, y: 100 };
     expect(at(targetCell({ x: 20 + 2.2 * 40, y: 100 + 3.4 * 40 }, field, 40, empty(), square))).toEqual({ r: 3, c: 2 });
     expect(targetCell({ x: 0, y: 0 }, field, 40, empty(), null)).toBe(NO_CELL);
+  });
+});
+
+describe('returnFrame', () => {
+  it('flies a missed part from where it was dropped to its socket, shrinking as it goes', () => {
+    expect(returnFrame(drag({ x: 0, y: 0 }, false, [0, 1, 1]), 0)).toEqual({ x: 200, y: 300, scale: 1 });
+    const mid = returnFrame(drag({ x: 0, y: 0 }, false, [0.5, 1, 1]), 0)!;
+    expect(mid.scale).toBeCloseTo(0.75);
+    const end = { x: 20 + 60 - 39, y: 600 + 50 - 39 };
+    expect(mid.x).toBeCloseTo((200 + end.x) / 2);
+    expect(mid.y).toBeCloseTo((300 + end.y) / 2);
+  });
+
+  it('is idle once the return finishes or for an empty slot', () => {
+    expect(returnFrame(drag({ x: 0, y: 0 }, false), 0)).toBeNull();
+    expect(returnFrame(drag({ x: 0, y: 0 }, false, [1, 0, 1]), 1)).toBeNull();
   });
 });

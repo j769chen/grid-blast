@@ -1,16 +1,27 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import type { View } from 'react-native';
 import { Gesture, PointerType } from 'react-native-gesture-handler';
-import { useAnimatedReaction, useSharedValue } from 'react-native-reanimated';
+import { Easing, useAnimatedReaction, useSharedValue, withTiming } from 'react-native-reanimated';
 import { scheduleOnRN, scheduleOnUI } from 'react-native-worklets';
 
 import type { Preview } from './components/Board';
-import { decodeCell, ghostFrame, NO_CELL, targetCell, type DragShared, type Point, type SlotGeo } from './drag';
+import {
+  decodeCell,
+  ghostFrame,
+  NO_CELL,
+  targetCell,
+  type DragShared,
+  type Point,
+  type Slot,
+  type SlotGeo,
+} from './drag';
 import { fits, previewCells, TRAY_SIZE, type GameState, type Piece } from './engine';
 import type { Buzz } from './haptics';
 import { PART_COLORS, span, type Metrics } from './theme';
 
 const SLOTS = Array.from({ length: TRAY_SIZE }, (_, i) => i);
+const DONE = SLOTS.map(() => 1);
+const RETURN = { duration: 200, easing: Easing.out(Easing.cubic) };
 
 interface DragEvent {
   slot: number;
@@ -51,15 +62,18 @@ export function useDragGestures({ state, stateRef, m, onPlace, haptic }: Options
   const geo = useSharedValue<(SlotGeo | null)[]>(SLOTS.map(() => null));
   const field = useSharedValue<Point>({ x: 0, y: 0 });
   const grid = useSharedValue<number[]>([]);
-  const slots = useSharedValue<Point[]>(SLOTS.map(() => ({ x: 0, y: 0 })));
+  const slots = useSharedValue<Slot[]>(SLOTS.map(() => ({ x: 0, y: 0, w: 0, h: 0 })));
+  const missFrom = useSharedValue<Point[]>(SLOTS.map(() => ({ x: 0, y: 0 })));
+  const back = useSharedValue(DONE);
+  const shrink = useSharedValue((m.mini + m.miniGap) / m.pitch);
   const enabled = useSharedValue(false);
   const moved = useSharedValue(false);
   const mouse = useSharedValue(false);
   const landing = useSharedValue<(Point | null)[]>(SLOTS.map(() => null));
   const events = useSharedValue<DragEvent[]>([]);
   const drag = useMemo<DragShared>(
-    () => ({ slot: dragSlot, touch, origin, pitch, mouse, geo, landing }),
-    [dragSlot, touch, origin, pitch, mouse, geo, landing],
+    () => ({ slot: dragSlot, touch, origin, pitch, mouse, geo, landing, slots, missFrom, back, shrink }),
+    [dragSlot, touch, origin, pitch, mouse, geo, landing, slots, missFrom, back, shrink],
   );
 
   useEffect(() => {
@@ -70,8 +84,9 @@ export function useDragGestures({ state, stateRef, m, onPlace, haptic }: Options
     );
     grid.set(state?.grid ?? []);
     pitch.set(m.pitch);
+    shrink.set((m.mini + m.miniGap) / m.pitch);
     enabled.set(!!state && !state.over);
-  }, [state, m, geo, grid, pitch, enabled]);
+  }, [state, m, geo, grid, pitch, shrink, enabled]);
 
   useEffect(() => {
     const done = released.current.splice(0);
@@ -86,11 +101,11 @@ export function useDragGestures({ state, stateRef, m, onPlace, haptic }: Options
     const root = rootRef.current;
     if (!root) return;
     fieldRef.current?.measureLayout(root, (x, y) => field.set({ x, y }));
-    const next: (Point | null)[] = SLOTS.map(() => null);
+    const next: (Slot | null)[] = SLOTS.map(() => null);
     slotViews.current.forEach((view, i) =>
-      view?.measureLayout(root, (x, y) => {
-        next[i] = { x, y };
-        if (next.every((v): v is Point => v !== null)) slots.set(next);
+      view?.measureLayout(root, (x, y, w, h) => {
+        next[i] = { x, y, w, h };
+        if (next.every((v): v is Slot => v !== null)) slots.set(next);
       }),
     );
   }, [field, slots]);
@@ -183,6 +198,10 @@ export function useDragGestures({ state, stateRef, m, onPlace, haptic }: Options
           .maxPointers(1)
           .onBegin((e) => {
             if (!enabled.get() || !geo.get()[i] || dragSlot.get() !== -1 || landing.get()[i]) return;
+            if (back.get()[i] < 1) {
+              back.set(back.get().map((t, k) => (k === i ? 1 : t)));
+              back.set(withTiming(DONE, RETURN));
+            }
             const s = slots.get()[i];
             const start = { x: s.x + e.x, y: s.y + e.y };
             origin.set(start);
@@ -207,13 +226,37 @@ export function useDragGestures({ state, stateRef, m, onPlace, haptic }: Options
             const f = ghostFrame(drag, i);
             const code =
               success && moved.get() ? targetCell(f, field.get(), pitch.get(), grid.get(), geo.get()[i]) : NO_CELL;
-            if (code !== NO_CELL) landing.set(landing.get().map((prev, k) => (k === i ? f : prev)));
+            if (code !== NO_CELL) {
+              landing.set(landing.get().map((prev, k) => (k === i ? f : prev)));
+            } else {
+              missFrom.set(missFrom.get().map((prev, k) => (k === i ? f : prev)));
+              back.set(back.get().map((t, k) => (k === i ? 0 : t)));
+              back.set(withTiming(DONE, RETURN));
+            }
             dragSlot.set(-1);
             events.set([...events.get(), { slot: i, code, end: true }]);
           }),
       ),
-    [slots, geo, enabled, dragSlot, origin, finger, touch, moved, mouse, drag, field, pitch, grid, landing, events],
+    [
+      slots,
+      geo,
+      enabled,
+      dragSlot,
+      origin,
+      finger,
+      touch,
+      moved,
+      mouse,
+      drag,
+      field,
+      pitch,
+      grid,
+      landing,
+      missFrom,
+      back,
+      events,
+    ],
   );
 
-  return { rootRef, fieldRef, slotRefs, measureLayout, gestures, drag, dragSlot, landing, held, preview, isDragging };
+  return { rootRef, fieldRef, slotRefs, measureLayout, gestures, drag, held, preview, isDragging };
 }

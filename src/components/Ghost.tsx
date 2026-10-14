@@ -2,7 +2,7 @@ import { memo } from 'react';
 import { StyleSheet, View, type ViewStyle } from 'react-native';
 import Animated, { useAnimatedStyle, type AnimatedStyle } from 'react-native-reanimated';
 
-import { ghostFrame, OFFSCREEN, type DragShared, type Point } from '../drag';
+import { ghostFrame, OFFSCREEN, returnFrame, type DragShared, type Point } from '../drag';
 import type { Piece } from '../engine';
 import { PART_COLORS, span, type Metrics } from '../theme';
 import { Led } from './Led';
@@ -58,6 +58,24 @@ const LandingPiece = memo(function LandingPiece({
   return <PieceView p={p} m={m} style={style} testID={`landing-${i}`} />;
 });
 
+const ReturningPiece = memo(function ReturningPiece({
+  p,
+  i,
+  m,
+  drag,
+}: {
+  p: Piece;
+  i: number;
+  m: Metrics;
+  drag: DragShared;
+}) {
+  const style = useAnimatedStyle(() => {
+    const f = drag.slot.get() === i ? null : returnFrame(drag, i);
+    return { ...at(f), transform: [{ scale: f ? f.scale : 1 }] };
+  });
+  return <PieceView p={p} m={m} style={style} testID={`return-${i}`} />;
+});
+
 export const GhostLayer = memo(function GhostLayer({
   tray,
   held,
@@ -72,6 +90,7 @@ export const GhostLayer = memo(function GhostLayer({
   return (
     <>
       {held.map((p, i) => (p ? <LandingPiece key={`held-${i}`} p={p} i={i} m={m} drag={drag} /> : null))}
+      {tray.map((p, i) => (p ? <ReturningPiece key={`return-${i}`} p={p} i={i} m={m} drag={drag} /> : null))}
       {tray.map((p, i) => (p ? <DraggedPiece key={`drag-${i}`} p={p} i={i} m={m} drag={drag} /> : null))}
     </>
   );
