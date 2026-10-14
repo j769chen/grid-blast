@@ -5,6 +5,9 @@ export const CORE_CHANCE = 0.4;
 export const AREA_CHANCE = 0.5;
 export const PTS = { cell: 10, line: 100, core: 40, circuit: 50, perfect: 3000 };
 export const MIN_CIRCUIT = 7;
+export const COMBO_GRACE = 3;
+
+export const lineScore = (lines: number) => (PTS.line * lines * (lines + 1)) / 2;
 
 export type Rand = () => number;
 
@@ -406,7 +409,7 @@ export function placePiece(
     const extra = hit.size - base.size;
     combo += 1;
     idle = 0;
-    gained += ((PTS.line * lineCount * (lineCount + 1)) / 2) * combo + extra * PTS.core + circuit.length * PTS.circuit;
+    gained += lineScore(lineCount) * combo + extra * PTS.core + circuit.length * PTS.circuit;
     hit.forEach((k) => {
       cleared.push({ idx: k, color: grid[k] });
       grid[k] = -1;
@@ -416,7 +419,7 @@ export function placePiece(
     if (perfect) gained += PTS.perfect;
   } else {
     idle += 1;
-    if (idle >= 3) combo = 0;
+    if (idle >= COMBO_GRACE) combo = 0;
   }
 
   let tray = s.tray.slice();

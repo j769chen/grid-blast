@@ -4,10 +4,10 @@ import { StyleSheet, Text, View } from 'react-native';
 import type { DragShared } from '../drag';
 import { COL_LABELS, describeCell, ROW_LABELS } from '../describe';
 import { fits, N, portCell, type CoreKind, type Piece, type Port, type Terminals } from '../engine';
-import { C, F, glow, PART_COLORS, portCentre, type Metrics } from '../theme';
+import { C, F, PART_COLORS, portCentre, type Metrics } from '../theme';
 import type { FxSpec } from '../fx';
 import { FxLayer } from './Fx';
-import { Led, Pad } from './Led';
+import { Led, Pad, PortSign } from './Led';
 import { ShadowLayer } from './Shadow';
 
 export type Preview = Map<number, string>;
@@ -32,7 +32,6 @@ const PLACE = [{ name: 'activate' as const, label: 'Place here' }];
 function Terminal({ sign, port, m }: { sign: string; port: Port; m: Metrics }) {
   const { x, y } = portCentre(port, m);
   const origin = m.pad + m.gut;
-  const size = m.gut * 0.8;
   return (
     <View
       aria-hidden
@@ -41,9 +40,7 @@ function Terminal({ sign, port, m }: { sign: string; port: Port; m: Metrics }) {
         { left: origin + x - m.gut / 2, top: origin + y - m.gut / 2, width: m.gut, height: m.gut },
       ]}
     >
-      <View style={[styles.port, { width: size, height: size, borderRadius: size }]}>
-        <Text style={[styles.sign, { fontSize: size * 0.75, lineHeight: size }]}>{sign}</Text>
-      </View>
+      <PortSign sign={sign} size={m.gut * 0.8} />
     </View>
   );
 }
@@ -198,14 +195,5 @@ const styles = StyleSheet.create({
   board: { borderRadius: 8, backgroundColor: C.maskDark },
   edge: { ...StyleSheet.absoluteFill, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(212,173,98,0.55)' },
   terminal: { position: 'absolute', alignItems: 'center', justifyContent: 'center' },
-  port: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: C.pad,
-    backgroundColor: C.ink,
-    boxShadow: glow(C.pad, 5, 0.9),
-  },
-  sign: { color: C.pad, fontFamily: F.bold, textAlign: 'center' },
   silk: { position: 'absolute', textAlign: 'center', color: C.silkDim, fontFamily: F.mono },
 });

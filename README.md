@@ -20,6 +20,7 @@ npx expo start
 - Fill a row or column to clear it. Rows and columns clear together.
 - When all three parts are placed, a new set is dealt. Every new set has at least one part that fits in some rotation.
 - The game ends when no remaining part fits in any rotation.
+- Tap **?** at the top of the screen for a summary of these rules. Vibration is switched on and off there too.
 
 ## Rotation
 
@@ -81,6 +82,6 @@ src/storage.ts          saved game, peak score and vibration setting
 src/haptics.ts          vibration patterns
 src/theme.ts            colors, fonts, board sizing
 src/format.ts           number formatting
-src/components/         Board, Tray, Ghost, Shadow, Hud, Fx, GameOver, Led, ErrorBoundary, Background, Icons
+src/components/         Board, Tray, Ghost, Shadow, Hud, Help, Fx, GameOver, Led, ErrorBoundary, Background, Icons
 src/__tests__/          unit tests
 ```

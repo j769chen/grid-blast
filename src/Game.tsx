@@ -6,6 +6,7 @@ import { Background } from './components/Background';
 import { Board } from './components/Board';
 import { GameOver } from './components/GameOver';
 import { GhostLayer } from './components/Ghost';
+import { Help } from './components/Help';
 import { Hud } from './components/Hud';
 import { Tray, type SlotAnim } from './components/Tray';
 import { anyMove, newGame, placePiece, spinPiece, TRAY_SIZE, type GameState, type Terminals } from './engine';
@@ -35,6 +36,7 @@ export default function Game() {
   const [armed, setArmed] = useState(false);
   const [chosen, setChosen] = useState<number | null>(null);
   const [wired, setWired] = useState<Terminals | null>(null);
+  const [helpOpen, setHelpOpen] = useState(false);
 
   const stateRef = useRef<GameState | null>(null);
   const mRef = useRef(m);
@@ -191,6 +193,9 @@ export default function Game() {
     buzz(next, 'select');
   }, [hapticsOn]);
 
+  const openHelp = useCallback(() => setHelpOpen(true), []);
+  const closeHelp = useCallback(() => setHelpOpen(false), []);
+
   const restart = useCallback(() => {
     const s = stateRef.current;
     if (!s) return;
@@ -214,15 +219,7 @@ export default function Game() {
     <View ref={rootRef} onLayout={measureLayout} style={styles.root}>
       <Background />
       <View style={[styles.column, { paddingTop: insets.top + 12, paddingBottom: insets.bottom + 12 }]}>
-        <Hud
-          score={state.score}
-          best={state.best}
-          hapticsOn={hapticsOn}
-          armed={armed}
-          m={m}
-          onToggleHaptics={toggleHaptics}
-          onRestart={restart}
-        />
+        <Hud score={state.score} best={state.best} armed={armed} m={m} onHelp={openHelp} onRestart={restart} />
         <Board
           grid={state.grid}
           cores={state.cores}
@@ -259,6 +256,7 @@ export default function Game() {
         newBest={newBest}
         onAgain={() => startGame(state.best)}
       />
+      <Help visible={helpOpen} onClose={closeHelp} hapticsOn={hapticsOn} onToggleHaptics={toggleHaptics} />
     </View>
   );
 }

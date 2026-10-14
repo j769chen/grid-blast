@@ -10,15 +10,14 @@ import Animated, {
 
 import { fmt } from '../format';
 import { C, F, type Metrics } from '../theme';
-import { RestartIcon, VibrateIcon } from './Icons';
+import { RestartIcon } from './Icons';
 
 interface HudProps {
   score: number;
   best: number;
-  hapticsOn: boolean;
   armed: boolean;
   m: Metrics;
-  onToggleHaptics: () => void;
+  onHelp: () => void;
   onRestart: () => void;
 }
 
@@ -43,7 +42,7 @@ function useCountUp(target: number) {
   return shown;
 }
 
-export const Hud = memo(function Hud({ score, best, hapticsOn, armed, m, onToggleHaptics, onRestart }: HudProps) {
+export const Hud = memo(function Hud({ score, best, armed, m, onHelp, onRestart }: HudProps) {
   const shown = useCountUp(score);
   const bump = useSharedValue(1);
   const bumpStyle = useAnimatedStyle(() => ({ transform: [{ scale: bump.get() }] }));
@@ -79,13 +78,8 @@ export const Hud = memo(function Hud({ score, best, hapticsOn, armed, m, onToggl
         </Animated.Text>
       </View>
       <View style={[styles.side, styles.tools]}>
-        <Pressable
-          onPress={onToggleHaptics}
-          accessibilityRole="button"
-          accessibilityLabel={hapticsOn ? 'Turn vibration off' : 'Turn vibration on'}
-          style={styles.btn}
-        >
-          <VibrateIcon color={C.silk} off={!hapticsOn} />
+        <Pressable onPress={onHelp} accessibilityRole="button" accessibilityLabel="How to play" style={styles.btn}>
+          <Text style={styles.help}>?</Text>
         </Pressable>
         <Pressable
           onPress={onRestart}
@@ -128,4 +122,5 @@ const styles = StyleSheet.create({
   },
   armed: { backgroundColor: C.danger, borderColor: C.danger },
   btnText: { fontFamily: F.mono, fontSize: 12, letterSpacing: 1, textTransform: 'uppercase', color: C.silk },
+  help: { fontFamily: F.bold, fontSize: 19, lineHeight: 22, color: C.silk },
 });

@@ -2,8 +2,11 @@ import { describe, expect, it, jest } from '@jest/globals';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { Gesture } from 'react-native-gesture-handler';
 import { makeMutable } from 'react-native-reanimated';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { Board } from '../components/Board';
+import { Help } from '../components/Help';
+import { Hud } from '../components/Hud';
 import { Tray } from '../components/Tray';
 import { describeCell, describePiece } from '../describe';
 import { NO_CELL, OFFSCREEN, type Clears, type DragShared, type Point, type SlotGeo } from '../drag';
@@ -122,5 +125,45 @@ describe('Tray', () => {
     expect(screen.getByLabelText(/^U3, cyan/).props.accessibilityActions).toEqual([
       { name: 'activate', label: 'Choose' },
     ]);
+  });
+});
+
+const safeArea = { frame: { x: 0, y: 0, width: 390, height: 800 }, insets: { top: 0, left: 0, right: 0, bottom: 0 } };
+
+function help(hapticsOn: boolean, onClose = () => {}, onToggleHaptics = () => {}) {
+  return render(
+    <SafeAreaProvider initialMetrics={safeArea}>
+      <Help visible onClose={onClose} hapticsOn={hapticsOn} onToggleHaptics={onToggleHaptics} />
+    </SafeAreaProvider>,
+  );
+}
+
+describe('Help', () => {
+  it('opens from the top bar', async () => {
+    const onHelp = jest.fn();
+    await render(<Hud score={0} best={0} armed={false} m={m} onHelp={onHelp} onRestart={() => {}} />);
+    await fireEvent.press(screen.getByRole('button', { name: 'How to play' }));
+    expect(onHelp).toHaveBeenCalled();
+  });
+
+  it('explains the rules and closes', async () => {
+    const onClose = jest.fn();
+    await help(true, onClose);
+    for (const title of ['How to play', 'Place parts', 'Rotate', 'Circuits', 'Cores', 'Scoring']) {
+      expect(screen.getByRole('header', { name: title })).toBeTruthy();
+    }
+    expect(screen.getByLabelText('4 lines at once: 1,000')).toBeTruthy();
+    expect(screen.getByLabelText('Emptying the board: 3,000')).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: 'Got it' }));
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it('holds the vibration setting', async () => {
+    const onToggleHaptics = jest.fn();
+    await help(false, () => {}, onToggleHaptics);
+    const toggle = screen.getByRole('switch', { name: 'Vibration', checked: false });
+    expect(screen.getByText('Vibration off')).toBeTruthy();
+    await fireEvent.press(toggle);
+    expect(onToggleHaptics).toHaveBeenCalled();
   });
 });
