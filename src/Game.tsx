@@ -124,7 +124,7 @@ export default function Game() {
     [commit, dealAll, haptic],
   );
 
-  const { rootRef, fieldRef, slotRefs, measureLayout, gestures, drag, dragSlot, landing, preview, isDragging } =
+  const { rootRef, fieldRef, slotRefs, measureLayout, gestures, drag, dragSlot, landing, held, preview, isDragging } =
     useDragGestures({ state, stateRef, m, onPlace: place, haptic });
 
   const spin = useCallback(
@@ -205,7 +205,7 @@ export default function Game() {
           them.
         </Text>
       </View>
-      <GhostLayer tray={state.tray} m={m} drag={drag} />
+      <GhostLayer tray={state.tray} held={held} m={m} drag={drag} />
       <GameOver
         visible={overVisible}
         score={state.score}

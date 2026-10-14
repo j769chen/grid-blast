@@ -28,6 +28,7 @@ interface Options {
 
 export function useDragGestures({ state, stateRef, m, onPlace, haptic }: Options) {
   const [preview, setPreview] = useState<Preview | null>(null);
+  const [held, setHeld] = useState<(Piece | null)[]>(SLOTS.map(() => null));
   const [releaseSeq, setReleaseSeq] = useState(0);
   const released = useRef<number[]>([]);
   const dragRef = useRef<{ i: number; p: Piece } | null>(null);
@@ -100,6 +101,7 @@ export function useDragGestures({ state, stateRef, m, onPlace, haptic }: Options
       if (!p) return;
       dragRef.current = { i, p };
       setPreview(null);
+      setHeld((h) => h.map((x, k) => (k === i ? p : x)));
       haptic('select');
     },
     [stateRef, haptic],
@@ -205,7 +207,7 @@ export function useDragGestures({ state, stateRef, m, onPlace, haptic }: Options
             const f = ghostFrame(drag, i);
             const code =
               success && moved.get() ? targetCell(f, field.get(), pitch.get(), grid.get(), geo.get()[i]) : NO_CELL;
-            landing.set(landing.get().map((prev, k) => (k === i ? f : prev)));
+            if (code !== NO_CELL) landing.set(landing.get().map((prev, k) => (k === i ? f : prev)));
             dragSlot.set(-1);
             events.set([...events.get(), { slot: i, code, end: true }]);
           }),
@@ -213,5 +215,5 @@ export function useDragGestures({ state, stateRef, m, onPlace, haptic }: Options
     [slots, geo, enabled, dragSlot, origin, finger, touch, moved, mouse, drag, field, pitch, grid, landing, events],
   );
 
-  return { rootRef, fieldRef, slotRefs, measureLayout, gestures, drag, dragSlot, landing, preview, isDragging };
+  return { rootRef, fieldRef, slotRefs, measureLayout, gestures, drag, dragSlot, landing, held, preview, isDragging };
 }
