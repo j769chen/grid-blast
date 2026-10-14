@@ -6,6 +6,10 @@ const AREA_CHANCE = 0.5;
 export const PTS = { cell: 10, line: 100, core: 40, circuit: 50, arc: 40, perfect: 3000 };
 export const MIN_CIRCUIT = 7;
 export const COMBO_GRACE = 3;
+export const RAMP = { from: 20000, to: 80000 };
+
+export const difficulty = (score: number) => Math.min(1, Math.max(0, score - RAMP.from) / (RAMP.to - RAMP.from));
+export const minCircuit = (level: number) => MIN_CIRCUIT + Math.round(level * 5);
 
 export const lineScore = (lines: number) => (PTS.line * lines * (lines + 1)) / 2;
 
@@ -128,12 +132,17 @@ export const SHAPES = DEFS.map(([weight, rows]) => {
   );
   return { w: rows[0].length, h: rows.length, cells, weight };
 });
-const TOTAL = SHAPES.reduce((a, s) => a + s.weight, 0);
+function shapeWeight({ weight, cells }: (typeof SHAPES)[number], level: number) {
+  if (cells.length <= 2) return weight * (1 - 0.6 * level);
+  if (cells.length >= 5) return weight * (1 + 1.5 * level);
+  return weight;
+}
 
-function pickShape(rand: Rand) {
-  let x = rand() * TOTAL;
+function pickShape(rand: Rand, level = 0) {
+  const weights = SHAPES.map((shape) => shapeWeight(shape, level));
+  let x = rand() * weights.reduce((a, w) => a + w, 0);
   for (let i = 0; i < SHAPES.length; i++) {
-    x -= SHAPES[i].weight;
+    x -= weights[i];
     if (x <= 0) return i;
   }
   return 0;
@@ -292,12 +301,14 @@ const PAIRS: Terminals[] = PORTS.flatMap((plus) =>
 
 export const samePort = (a: Port, b: Port) => a.side === b.side && a.at === b.at;
 
-export function pickTerminals(grid: number[], rand: Rand = Math.random, avoid?: Terminals): Terminals {
+export function pickTerminals(grid: number[], rand: Rand = Math.random, avoid?: Terminals, level = 0): Terminals {
   const open = PAIRS.filter((t) => !circuitPath(grid, t));
-  const moved = avoid
-    ? open.filter((t) => [t.plus, t.minus].every((p) => !samePort(p, avoid.plus) && !samePort(p, avoid.minus)))
-    : open;
-  const pool = moved.length ? moved : open.length ? open : PAIRS;
+  const far = open.filter((t) => shortestCircuit(t) >= minCircuit(level));
+  const away = (pairs: Terminals[]) =>
+    avoid
+      ? pairs.filter((t) => [t.plus, t.minus].every((p) => !samePort(p, avoid.plus) && !samePort(p, avoid.minus)))
+      : pairs;
+  const pool = [away(far), away(open), far, open, PAIRS].find((pairs) => pairs.length)!;
   return pool[Math.floor(rand() * pool.length)];
 }
 
@@ -310,14 +321,14 @@ export function repairGame(g: GameState): GameState {
   };
 }
 
-export function newTray(grid: number[], rand: Rand = Math.random): Piece[] {
+export function newTray(grid: number[], rand: Rand = Math.random, level = 0): Piece[] {
   for (let t = 0; t < 40; t++) {
     const colors = shuffle(
       Array.from({ length: COLOR_COUNT }, (_, k) => k),
       rand,
     );
-    const tray = Array.from({ length: TRAY_SIZE }, (_, i) => makePiece(pickShape(rand), colors[i]));
-    if (rand() < CORE_CHANCE) {
+    const tray = Array.from({ length: TRAY_SIZE }, (_, i) => makePiece(pickShape(rand, level), colors[i]));
+    if (rand() < CORE_CHANCE * (1 - 0.6 * level)) {
       const options = tray.filter((p) => p.cells.length > 1);
       if (options.length) {
         const p = options[Math.floor(rand() * options.length)];
@@ -437,13 +448,14 @@ export function placePiece(
     if (idle >= COMBO_GRACE) combo = 0;
   }
 
+  const score = s.score + gained;
+  const level = difficulty(score);
   let tray = s.tray.slice();
   tray[i] = null;
   const dealt = tray.every((x) => !x);
-  if (dealt) tray = newTray(grid, rand);
+  if (dealt) tray = newTray(grid, rand, level);
 
-  const terminals = circuit.length ? pickTerminals(grid, rand, s.terminals) : s.terminals;
-  const score = s.score + gained;
+  const terminals = circuit.length ? pickTerminals(grid, rand, s.terminals, level) : s.terminals;
   const next: GameState = {
     grid,
     cores,
