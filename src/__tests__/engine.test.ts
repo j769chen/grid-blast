@@ -5,15 +5,18 @@ import {
   blastCells,
   cellIndex,
   circuitPath,
+  difficulty,
   fits,
   isGameState,
   makePiece,
   MIN_CIRCUIT,
+  minCircuit,
   N,
   newGame,
   newTray,
   pickTerminals,
   placePiece,
+  RAMP,
   portCell,
   repairGame,
   rotate,
@@ -581,5 +584,50 @@ describe('repairGame', () => {
     const g = newGame(0, seeded(2));
     g.cores[g.grid.findIndex((v) => v >= 0)] = 'area';
     expect(repairGame(g)).toEqual(g);
+  });
+});
+
+describe('difficulty ramp', () => {
+  it('starts once the score passes the ramp and tops out at its end', () => {
+    expect(difficulty(0)).toBe(0);
+    expect(difficulty(RAMP.from)).toBe(0);
+    expect(difficulty((RAMP.from + RAMP.to) / 2)).toBe(0.5);
+    expect(difficulty(RAMP.to)).toBe(1);
+    expect(difficulty(RAMP.to * 10)).toBe(1);
+  });
+
+  it('deals bigger parts and fewer cores at full difficulty', () => {
+    const grid = Array<number>(N * N).fill(-1);
+    const deal = (level: number) => {
+      const rand = seeded(11);
+      const parts = Array.from({ length: 400 }, () => newTray(grid, rand, level)).flat();
+      return {
+        cells: parts.reduce((a, p) => a + p.cells.length, 0) / parts.length,
+        cores: parts.filter((p) => p.core >= 0).length,
+      };
+    };
+    const easy = deal(0);
+    const hard = deal(1);
+    expect(hard.cells).toBeGreaterThan(easy.cells + 0.5);
+    expect(hard.cores).toBeLessThan(easy.cores * 0.6);
+  });
+
+  it('moves terminals farther apart after a circuit at a high score', () => {
+    const terminals: Terminals = { plus: { side: 'left', at: 4 }, minus: { side: 'top', at: 3 } };
+    const s = blank([single(), single(), single()], { terminals, score: RAMP.to });
+    [
+      [4, 0],
+      [3, 0],
+      [1, 0],
+      [0, 0],
+      [0, 1],
+      [0, 2],
+      [0, 3],
+    ].forEach(([r, c]) => (s.grid[cellIndex(r, c)] = 2));
+    for (let seed = 1; seed <= 20; seed++) {
+      const res = placePiece(s, 0, 2, 0, seeded(seed))!;
+      expect(res.circuit.length).toBeGreaterThan(0);
+      expect(shortestCircuit(res.state.terminals)).toBeGreaterThanOrEqual(minCircuit(1));
+    }
   });
 });

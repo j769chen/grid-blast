@@ -2,7 +2,7 @@ import { memo, useRef, type ReactNode } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { COMBO_GRACE, lineScore, PTS } from '../engine';
+import { COMBO_GRACE, lineScore, PTS, RAMP } from '../engine';
 import { fmt } from '../format';
 import { C, F, PART_COLORS } from '../theme';
 import { RotateIcon, VibrateIcon } from './Icons';
@@ -67,6 +67,9 @@ export const Help = memo(function Help({ visible, onClose, hapticsOn, onToggleHa
               <Item>Drag a part from the three sockets onto the board. Place all three to get a new set.</Item>
               <Item>Fill a row or column to clear it. Rows and columns clear together.</Item>
               <Item>The game ends when no part fits anywhere, in any rotation.</Item>
+              <Item>
+                {`Past ${fmt(RAMP.from)} points it gets harder: bigger parts, fewer cores and longer circuits.`}
+              </Item>
             </Section>
             <Section title="Rotate">
               <Item icon={<RotateIcon size={18} color={C.silk} />}>
