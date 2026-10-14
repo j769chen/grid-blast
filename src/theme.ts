@@ -1,4 +1,4 @@
-import { N } from './engine';
+import { N, type Port } from './engine';
 
 export const C = {
   mask: '#0f5a3b',
@@ -51,7 +51,7 @@ export function metrics(width: number, height: number): Metrics {
   const size = Math.max(240, Math.min(width - 32, 440, (height - 178) / 1.56));
   const pad = Math.round(size * 0.02);
   const gut = Math.round(size * 0.05);
-  const field = size - pad * 2 - gut;
+  const field = size - pad * 2 - gut * 2;
   const gap = Math.max(2, Math.round(size * 0.007));
   const cell = (field - gap * (N - 1)) / N;
   return {
@@ -70,6 +70,12 @@ export function metrics(width: number, height: number): Metrics {
 }
 
 export const span = (cells: number, m: Metrics) => cells * m.pitch - m.gap;
+
+export function portCentre({ side, at }: Port, m: Metrics) {
+  const along = at * m.pitch + m.cell / 2;
+  const out = side === 'left' || side === 'top' ? -m.gut / 2 : m.field + m.gut / 2;
+  return side === 'left' || side === 'right' ? { x: out, y: along } : { x: along, y: out };
+}
 
 export const BUFFER_SCALE = 0.6;
 

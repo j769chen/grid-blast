@@ -15,13 +15,17 @@ import {
   newTray,
   pickTerminals,
   placePiece,
+  portCell,
   rotate,
   SHAPES,
+  shortestCircuit,
+  SIDES,
   spinPiece,
   stashPiece,
   turnsToFit,
   type GameState,
   type Piece,
+  type Terminals,
 } from '../engine';
 
 const shapeIndex = (w: number, h: number, n: number) =>
@@ -53,7 +57,7 @@ function blank(tray: (Piece | null)[], over: Partial<GameState> = {}): GameState
   return {
     grid: Array(N * N).fill(-1),
     cores: Array(N * N).fill(null),
-    terminals: { row: 3, col: 3 },
+    terminals: { plus: { side: 'left', at: 3 }, minus: { side: 'top', at: 3 } },
     tray,
     buffer: null,
     stashed: false,
@@ -250,7 +254,9 @@ describe('isGameState', () => {
     expect(isGameState(tweak((s) => delete s.terminals))).toBe(false);
     expect(isGameState(tweak((s) => (s.buffer = { w: 1 })))).toBe(false);
     expect(isGameState(tweak((s) => delete s.stashed))).toBe(false);
-    expect(isGameState(tweak((s) => (s.terminals = { row: 9, col: 3 })))).toBe(false);
+    expect(
+      isGameState(tweak((s) => (s.terminals = { plus: { side: 'left', at: 9 }, minus: { side: 'top', at: 3 } }))),
+    ).toBe(false);
     expect(isGameState(tweak((s) => ((s.tray as Piece[])[0].coreKind = 'huge' as Piece['coreKind'])))).toBe(false);
   });
 });
@@ -397,7 +403,7 @@ describe('area cores', () => {
 });
 
 describe('circuits', () => {
-  const terminals = { row: 4, col: 3 };
+  const terminals: Terminals = { plus: { side: 'left', at: 4 }, minus: { side: 'top', at: 3 } };
   const route: [number, number][] = [
     [4, 0],
     [3, 0],
@@ -480,31 +486,55 @@ describe('circuits', () => {
     for (let seed = 1; seed <= 60; seed++) {
       const g = newGame(0, seeded(seed));
       expect(circuitPath(g.grid, g.terminals)).toBeNull();
-      expect(g.terminals.row + g.terminals.col + 1).toBeGreaterThanOrEqual(MIN_CIRCUIT);
+      expect(shortestCircuit(g.terminals)).toBeGreaterThanOrEqual(MIN_CIRCUIT);
     }
     const s = wired();
     expect(circuitPath(s.grid, pickTerminals(s.grid, seeded(5)))).toBeNull();
   });
 
-  it('can deal terminals on any row and column far enough apart', () => {
+  it('can deal either terminal beside any square on any edge', () => {
     const grid = Array<number>(N * N).fill(-1);
-    const seen = new Set<string>();
-    for (let k = 0; k < 200; k++) {
-      const t = pickTerminals(grid, () => k / 200);
-      seen.add(`${t.row},${t.col}`);
+    const plus = new Set<string>();
+    const minus = new Set<string>();
+    for (let k = 0; k < 2000; k++) {
+      const t = pickTerminals(grid, () => k / 2000);
+      expect(shortestCircuit(t)).toBeGreaterThanOrEqual(MIN_CIRCUIT);
+      plus.add(`${t.plus.side} ${t.plus.at}`);
+      minus.add(`${t.minus.side} ${t.minus.at}`);
     }
-    expect(seen.size).toBe(43);
-    expect(seen).toContain('0,6');
-    expect(seen).toContain('7,0');
-    expect(seen).not.toContain('2,3');
+    expect(plus.size).toBe(SIDES.length * N);
+    expect(minus.size).toBe(SIDES.length * N);
   });
 
-  it('moves the + to a new row and the − to a new column after a circuit', () => {
+  it('connects terminals on the right and bottom edges', () => {
+    const edges: Terminals = { plus: { side: 'right', at: 2 }, minus: { side: 'bottom', at: 4 } };
+    const wire: [number, number][] = [
+      [2, 7],
+      [3, 7],
+      [4, 7],
+      [5, 7],
+      [6, 7],
+      [7, 7],
+      [7, 6],
+      [7, 5],
+      [7, 4],
+    ];
+    const grid = Array<number>(N * N).fill(-1);
+    wire.forEach(([r, c]) => (grid[cellIndex(r, c)] = 1));
+    expect(portCell(edges.plus)).toBe(cellIndex(2, 7));
+    expect(portCell(edges.minus)).toBe(cellIndex(7, 4));
+    expect(shortestCircuit(edges)).toBe(wire.length);
+    expect(circuitPath(grid, edges)).toEqual(wire.map(([r, c]) => cellIndex(r, c)));
+  });
+
+  it('moves both terminals to new spots after a circuit', () => {
     for (let k = 0; k < 30; k++) {
       const res = placePiece(wired(2), 0, 2, 0, () => (k + 0.5) / 30)!;
       expect(res.circuit).toHaveLength(route.length);
-      expect(res.state.terminals.row).not.toBe(terminals.row);
-      expect(res.state.terminals.col).not.toBe(terminals.col);
+      expect(res.wired).toEqual(terminals);
+      const ports = [res.state.terminals.plus, res.state.terminals.minus];
+      expect(ports).not.toContainEqual(terminals.plus);
+      expect(ports).not.toContainEqual(terminals.minus);
     }
   });
 });

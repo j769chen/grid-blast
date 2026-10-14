@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { circuitPath, MIN_CIRCUIT, newGame } from '../engine';
+import { circuitPath, MIN_CIRCUIT, newGame, shortestCircuit } from '../engine';
 import { loadSaved, parseSave, saveGame, SAVE_VERSION } from '../storage';
 
 const game = (best = 0) => newGame(best, () => 0.5);
@@ -60,7 +60,7 @@ describe('version 2 saves', () => {
   it('gain unconnected terminals', () => {
     const { terminals: _t, ...old } = game();
     const parsed = parseSave(JSON.stringify({ v: 2, game: old, startBest: 0 }))!;
-    expect(parsed.game.terminals.row + parsed.game.terminals.col + 1).toBeGreaterThanOrEqual(MIN_CIRCUIT);
+    expect(shortestCircuit(parsed.game.terminals)).toBeGreaterThanOrEqual(MIN_CIRCUIT);
     expect(circuitPath(parsed.game.grid, parsed.game.terminals)).toBeNull();
   });
 });
@@ -71,6 +71,14 @@ describe('version 3 saves', () => {
     const parsed = parseSave(JSON.stringify({ v: 3, game: old, startBest: 0 }))!;
     expect(parsed.game.buffer).toBeNull();
     expect(parsed.game.stashed).toBe(false);
+  });
+});
+
+describe('version 4 saves', () => {
+  it('turn row and column terminals into left and top edge terminals', () => {
+    const old = { ...game(), terminals: { row: 5, col: 2 } };
+    const parsed = parseSave(JSON.stringify({ v: 4, game: old, startBest: 0 }))!;
+    expect(parsed.game.terminals).toEqual({ plus: { side: 'left', at: 5 }, minus: { side: 'top', at: 2 } });
   });
 });
 

@@ -11,7 +11,7 @@ function state(tray: (Piece | null)[], over: Partial<GameState> = {}): GameState
   return {
     grid: Array(N * N).fill(-1),
     cores: Array(N * N).fill(null),
-    terminals: { row: 3, col: 3 },
+    terminals: { plus: { side: 'left', at: 3 }, minus: { side: 'top', at: 3 } },
     tray,
     buffer: null,
     stashed: false,
@@ -85,7 +85,9 @@ describe('buildFx', () => {
   });
 
   it('runs a bolt from + to − along a circuit, then clears the path and arc together', () => {
-    const s = state([single(), single(), single()], { terminals: { row: 3, col: 3 } });
+    const s = state([single(), single(), single()], {
+      terminals: { plus: { side: 'left', at: 3 }, minus: { side: 'top', at: 3 } },
+    });
     [
       [3, 0],
       [2, 0],
