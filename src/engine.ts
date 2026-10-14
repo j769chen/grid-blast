@@ -6,7 +6,7 @@ export const COLOR_COUNT = 7;
 export const CORE_CHANCE = 0.4;
 export const AREA_CHANCE = 0.5;
 export const PTS = { cell: 10, line: 100, core: 40, circuit: 50, perfect: 3000 };
-export const TERMINAL_MIN = 3;
+export const MIN_CIRCUIT = 7;
 
 export type Rand = () => number;
 
@@ -261,13 +261,14 @@ export function circuitArc(grid: number[], path: number[]): number[] {
 }
 
 export function pickTerminals(grid: number[], rand: Rand = Math.random, avoid?: Terminals): Terminals {
-  const span = N - TERMINAL_MIN;
-  for (let t = 0; t < 60; t++) {
-    const next = { row: TERMINAL_MIN + Math.floor(rand() * span), col: TERMINAL_MIN + Math.floor(rand() * span) };
-    if (avoid && next.row === avoid.row && next.col === avoid.col) continue;
-    if (!circuitPath(grid, next)) return next;
+  const all: Terminals[] = [];
+  for (let row = 0; row < N; row++) {
+    for (let col = 0; col < N; col++) if (row + col + 1 >= MIN_CIRCUIT) all.push({ row, col });
   }
-  return { row: N - 1, col: N - 1 };
+  const open = all.filter((t) => !circuitPath(grid, t));
+  const moved = open.filter((t) => !avoid || (t.row !== avoid.row && t.col !== avoid.col));
+  const pool = moved.length ? moved : open.length ? open : all;
+  return pool[Math.floor(rand() * pool.length)];
 }
 
 export function newTray(grid: number[], rand: Rand = Math.random): Piece[] {
