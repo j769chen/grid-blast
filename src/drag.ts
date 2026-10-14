@@ -1,11 +1,13 @@
 import type { SharedValue } from 'react-native-reanimated';
 
-import { circuitArc, circuitPath, N, type Lines, type Terminals } from './engine';
+import { cellIndex, circuitArc, circuitPath, fullLines, lineCells, N, type Lines, type Terminals } from './engine';
 import { C } from './theme';
 
 export const DRAG_GAIN = 1.4;
 export const LIFT_CELLS = 1.93;
-export const SNAP_RADIUS = 1;
+const SNAP_RADIUS = 1;
+export const MOVE_SLOP = 8;
+export const NO_SLOT = -1;
 export const NO_CELL = -1;
 export const OFFSCREEN = -9999;
 export const NO_TERMINALS: Terminals = { plus: { side: 'left', at: 0 }, minus: { side: 'left', at: 0 } };
@@ -46,7 +48,6 @@ export interface DragShared {
   shrink: SharedValue<number[]>;
   target: SharedValue<number>;
   lines: SharedValue<Clears>;
-  terminals: SharedValue<Terminals>;
 }
 
 export function returnFrame(d: DragShared, i: number) {
@@ -74,11 +75,6 @@ export function ghostFrame(d: DragShared, i: number): Point {
   return { x: cx - g.w / 2, y: cy - g.h / 2 };
 }
 
-export function encodeCell(r: number, c: number) {
-  'worklet';
-  return r * N + c;
-}
-
 export function decodeCell(code: number) {
   return { r: Math.floor(code / N), c: code % N };
 }
@@ -98,7 +94,7 @@ export function nearestCell(grid: number[], g: SlotGeo, fr: number, fc: number) 
       let ok = true;
       for (let k = 0; k < g.cells.length && ok; k += 2) ok = grid[(r + g.cells[k]) * N + c + g.cells[k + 1]] < 0;
       if (ok) {
-        best = encodeCell(r, c);
+        best = cellIndex(r, c);
         bestD = d;
       }
     }
@@ -114,33 +110,18 @@ export function targetCell(frame: Point, field: Point, pitch: number, grid: numb
 
 export function completedLines(grid: number[], g: SlotGeo | null, code: number, t: Terminals): Clears {
   'worklet';
-  const rows: number[] = [];
-  const cols: number[] = [];
-  if (!g || code === NO_CELL || grid.length !== N * N) return { rows, cols, circuit: [] };
-  const r0 = Math.floor(code / N);
-  const c0 = code % N;
+  if (!g || code === NO_CELL || grid.length !== N * N) return { rows: [], cols: [], circuit: [] };
   const placed = grid.slice();
-  for (let k = 0; k < g.cells.length; k += 2) placed[(r0 + g.cells[k]) * N + c0 + g.cells[k + 1]] = 0;
-  for (let i = 0; i < N; i++) {
-    let row = true;
-    let col = true;
-    for (let j = 0; j < N; j++) {
-      if (placed[i * N + j] < 0) row = false;
-      if (placed[j * N + i] < 0) col = false;
-    }
-    if (row) rows.push(i);
-    if (col) cols.push(i);
-  }
+  for (let k = 0; k < g.cells.length; k += 2) placed[code + g.cells[k] * N + g.cells[k + 1]] = 0;
   const path = circuitPath(placed, t) ?? [];
-  return { rows, cols, circuit: [...path, ...circuitArc(placed, path)] };
+  return { ...fullLines(placed), circuit: [...path, ...circuitArc(placed, path)] };
 }
 
-export function clearPreview(grid: number[], clears: Clears, color: string) {
-  const hint = new Map<number, string>();
-  for (let j = 0; j < N; j++) {
-    clears.rows.forEach((r) => grid[r * N + j] >= 0 && hint.set(r * N + j, color));
-    clears.cols.forEach((c) => grid[j * N + c] >= 0 && hint.set(j * N + c, color));
-  }
+export type Preview = Map<number, string>;
+
+export function clearPreview(grid: number[], clears: Clears, color: string): Preview {
+  const hint: Preview = new Map();
+  lineCells(clears).forEach((k) => grid[k] >= 0 && hint.set(k, color));
   clears.circuit.forEach((k) => grid[k] >= 0 && hint.set(k, C.circuit));
   return hint;
 }

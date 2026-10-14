@@ -51,7 +51,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: 'rgba(212,173,98,0.55)',
+    borderColor: C.padLine,
     backgroundColor: C.maskDark,
     alignItems: 'center',
     gap: 6,

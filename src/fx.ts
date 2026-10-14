@@ -156,7 +156,7 @@ export function buildFx(res: PlaceResult, m: Metrics): FxSpec[] {
   if (headline) {
     add({
       kind: 'praise',
-      x: m.pitch * 4,
+      x: m.field / 2,
       y,
       text: headline,
       surge: surges > 0 && !res.perfect && !res.circuit.length,
@@ -164,6 +164,6 @@ export function buildFx(res: PlaceResult, m: Metrics): FxSpec[] {
     });
     y += m.pitch * 1.2;
   }
-  if (res.state.combo >= 2) add({ kind: 'combo', x: m.pitch * 4, y, text: `Combo ${res.state.combo}`, delay: boom });
+  if (res.state.combo >= 2) add({ kind: 'combo', x: m.field / 2, y, text: `Combo ${res.state.combo}`, delay: boom });
   return items;
 }

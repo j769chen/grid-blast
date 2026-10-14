@@ -147,7 +147,7 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: 'rgba(212,173,98,0.55)',
+    borderColor: C.padLine,
     backgroundColor: C.maskDark,
   },
   title: { fontFamily: F.bold, fontSize: 22, color: C.silk, textAlign: 'center', marginBottom: 8 },

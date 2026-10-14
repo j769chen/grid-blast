@@ -19,7 +19,7 @@ import {
   type GameState,
   type Terminals,
 } from './engine';
-import { fmt } from './format';
+import { describePlacement } from './describe';
 import { buildFx, circuitDelay, FX_LIFETIME, type FxSpec } from './fx';
 import { buzz, type Buzz } from './haptics';
 import { loadSaved, saveGame, saveHaptics, saveHelpSeen } from './storage';
@@ -189,7 +189,7 @@ export default function Game() {
   const spin = useCallback(
     (i: number) => {
       const s = stateRef.current;
-      if (!s || s.over || !s.tray[i] || isDragging()) return;
+      if (!s || isDragging()) return;
       const next = spinPiece(s, i);
       if (!next) return;
       commit(next);
@@ -219,11 +219,7 @@ export default function Game() {
       if (selected === null) return;
       const res = place(selected, r, c);
       setChosen(null);
-      if (!res) return;
-      const cleared = res.lineCount ? `${res.lineCount} ${res.lineCount > 1 ? 'lines' : 'line'} cleared. ` : '';
-      const circuit = res.circuit.length ? 'Circuit complete. ' : '';
-      const over = res.state.over ? ' No part fits. Game over.' : '';
-      AccessibilityInfo.announceForAccessibility(`Placed. ${circuit}${cleared}Score ${fmt(res.state.score)}.${over}`);
+      if (res) AccessibilityInfo.announceForAccessibility(describePlacement(res));
     },
     [selected, place],
   );
