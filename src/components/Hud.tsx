@@ -22,20 +22,23 @@ interface HudProps {
   onRestart: () => void;
 }
 
+const COUNT_MS = 450;
+const COUNT_STEP = 60;
+
 function useCountUp(target: number) {
   const [shown, setShown] = useState(target);
   const cur = useRef(target);
   useEffect(() => {
-    let raf = 0;
-    const step = () => {
-      if (cur.current === target) return;
-      const diff = target - cur.current;
-      cur.current += Math.sign(diff) * Math.max(1, Math.ceil(Math.abs(diff) * 0.12));
+    const from = cur.current;
+    if (from === target) return;
+    const start = Date.now();
+    const id = setInterval(() => {
+      const k = Math.min(1, (Date.now() - start) / COUNT_MS);
+      cur.current = Math.round(from + (target - from) * (1 - (1 - k) ** 3));
       setShown(cur.current);
-      raf = requestAnimationFrame(step);
-    };
-    raf = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(raf);
+      if (k === 1) clearInterval(id);
+    }, COUNT_STEP);
+    return () => clearInterval(id);
   }, [target]);
   return shown;
 }

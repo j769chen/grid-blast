@@ -215,7 +215,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,194,244,0.55)',
     boxShadow: glow(C.surge, 14),
   },
-  spark: { borderRadius: 4, backgroundColor: C.trace, boxShadow: glow(C.traceGlow, 10) },
+  spark: { borderRadius: 4, backgroundColor: C.trace },
   bolt: { position: 'absolute', backgroundColor: '#fff' },
   pop: {
     position: 'absolute',

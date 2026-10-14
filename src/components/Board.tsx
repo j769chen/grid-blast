@@ -51,27 +51,11 @@ function Terminal({ sign, port, m }: { sign: string; port: Port; m: Metrics }) {
   );
 }
 
-export const Board = memo(function Board({
-  grid,
-  cores,
-  preview,
-  m,
-  fieldRef,
-  onBoardLayout,
-  fx,
-  tray,
-  drag,
-  placing,
-  onPlaceAt,
-  terminals,
-}: BoardProps) {
-  const origin = m.pad + m.gut;
-  const labelSize = m.size * 0.03;
+type CellsProps = Pick<BoardProps, 'grid' | 'cores' | 'preview' | 'm' | 'placing' | 'onPlaceAt' | 'terminals'>;
+
+const Cells = memo(function Cells({ grid, cores, preview, m, placing, onPlaceAt, terminals }: CellsProps) {
   const plusCell = portCell(terminals.plus);
   const minusCell = portCell(terminals.minus);
-  const taken = (side: Port['side'], at: number) =>
-    [terminals.plus, terminals.minus].some((p) => p.side === side && p.at === at);
-
   const cells = [];
   for (let i = 0; i < N * N; i++) {
     const r = Math.floor(i / N);
@@ -111,6 +95,28 @@ export const Board = memo(function Board({
       </View>,
     );
   }
+
+  return <>{cells}</>;
+});
+
+export const Board = memo(function Board({
+  grid,
+  cores,
+  preview,
+  m,
+  fieldRef,
+  onBoardLayout,
+  fx,
+  tray,
+  drag,
+  placing,
+  onPlaceAt,
+  terminals,
+}: BoardProps) {
+  const origin = m.pad + m.gut;
+  const labelSize = m.size * 0.03;
+  const taken = (side: Port['side'], at: number) =>
+    [terminals.plus, terminals.minus].some((p) => p.side === side && p.at === at);
 
   return (
     <View onLayout={onBoardLayout} style={styles.outline}>
@@ -172,7 +178,15 @@ export const Board = memo(function Board({
           ref={fieldRef}
           style={{ position: 'absolute', left: origin, top: origin, width: m.field, height: m.field }}
         >
-          {cells}
+          <Cells
+            grid={grid}
+            cores={cores}
+            preview={preview}
+            m={m}
+            placing={placing}
+            onPlaceAt={onPlaceAt}
+            terminals={terminals}
+          />
           <ShadowLayer tray={tray} m={m} drag={drag} />
           <FxLayer items={fx} m={m} />
         </View>
