@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { isGameState, N, pickTerminals, type GameState } from './engine';
 
 const KEY = { game: 'overclock.game', best: 'overclock.best', haptics: 'overclock.haptics' };
-export const SAVE_VERSION = 5;
+export const SAVE_VERSION = 6;
 
 export interface SavedGame {
   game: GameState;
@@ -45,11 +45,6 @@ function fromV2(x: unknown): unknown {
   return { ...g, terminals: pickTerminals(grid) };
 }
 
-function fromV3(x: unknown): unknown {
-  if (!x || typeof x !== 'object' || 'buffer' in x) return x;
-  return { ...x, buffer: null, stashed: false };
-}
-
 function fromV4(x: unknown): unknown {
   if (!x || typeof x !== 'object') return x;
   const g = x as Record<string, unknown>;
@@ -58,7 +53,19 @@ function fromV4(x: unknown): unknown {
   return { ...g, terminals: { plus: { side: 'left', at: t.row }, minus: { side: 'top', at: t.col } } };
 }
 
-const MIGRATIONS = [fromV1, fromV2, fromV3, fromV4];
+function fromV5(x: unknown): unknown {
+  if (!x || typeof x !== 'object') return x;
+  const { buffer, stashed: _stashed, ...g } = x as Record<string, unknown>;
+  const tray = Array.isArray(g.tray) ? g.tray.slice() : g.tray;
+  if (buffer && Array.isArray(tray)) {
+    const free = tray.indexOf(null);
+    if (free >= 0) tray[free] = buffer;
+  }
+  return { ...g, tray };
+}
+
+const keep = (x: unknown) => x;
+const MIGRATIONS = [fromV1, fromV2, keep, fromV4, fromV5];
 const migrate = (game: unknown, from: number) => MIGRATIONS.slice(from - 1).reduce((g, step) => step(g), game);
 
 export function parseSave(raw: string | null): SavedGame | null {

@@ -1,6 +1,6 @@
 import type { SharedValue } from 'react-native-reanimated';
 
-import { BUFFER, circuitArc, circuitPath, N, type Lines, type Terminals } from './engine';
+import { circuitArc, circuitPath, N, type Lines, type Terminals } from './engine';
 
 export const DRAG_GAIN = 1.4;
 export const LIFT_CELLS = 1.93;
@@ -46,15 +46,6 @@ export interface DragShared {
   target: SharedValue<number>;
   lines: SharedValue<Clears>;
   terminals: SharedValue<Terminals>;
-  canStash: SharedValue<boolean>;
-}
-
-export function overBuffer(d: DragShared, i: number) {
-  'worklet';
-  if (i === BUFFER || d.slot.get() < 0 || !d.canStash.get()) return false;
-  const t = d.touch.get();
-  const b = d.slots.get()[BUFFER];
-  return t.x >= b.x && t.x <= b.x + b.w && t.y >= b.y && t.y <= b.y + b.h;
 }
 
 export function returnFrame(d: DragShared, i: number) {

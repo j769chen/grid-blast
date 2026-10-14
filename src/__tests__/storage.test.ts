@@ -65,12 +65,23 @@ describe('version 2 saves', () => {
   });
 });
 
-describe('version 3 saves', () => {
-  it('gain an empty buffer', () => {
-    const { buffer: _b, stashed: _s, ...old } = game();
-    const parsed = parseSave(JSON.stringify({ v: 3, game: old, startBest: 0 }))!;
-    expect(parsed.game.buffer).toBeNull();
-    expect(parsed.game.stashed).toBe(false);
+describe('version 5 saves', () => {
+  it('move a stored part into an empty tray slot and drop the buffer', () => {
+    const g = game();
+    const stored = g.tray[0];
+    const old = { ...g, tray: [null, g.tray[1], g.tray[2]], buffer: stored, stashed: true };
+    const parsed = parseSave(JSON.stringify({ v: 5, game: old, startBest: 0 }))!;
+    expect(parsed.game.tray).toEqual([stored, g.tray[1], g.tray[2]]);
+    expect(parsed.game).not.toHaveProperty('buffer');
+    expect(parsed.game).not.toHaveProperty('stashed');
+  });
+
+  it('drop the stored part when the tray is full', () => {
+    const g = game();
+    const parsed = parseSave(
+      JSON.stringify({ v: 5, game: { ...g, buffer: g.tray[0], stashed: false }, startBest: 0 }),
+    )!;
+    expect(parsed.game.tray).toEqual(g.tray);
   });
 });
 

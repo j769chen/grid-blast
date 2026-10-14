@@ -11,7 +11,6 @@ import {
   ghostFrame,
   NO_CELL,
   NO_TERMINALS,
-  overBuffer,
   sameLines,
   targetCell,
   type DragShared,
@@ -20,11 +19,11 @@ import {
   type Slot,
   type SlotGeo,
 } from './drag';
-import { BUFFER, cellIndex, N, parts, SOURCES, type GameState, type Piece, type Terminals } from './engine';
+import { cellIndex, N, TRAY_SIZE, type GameState, type Piece, type Terminals } from './engine';
 import type { Buzz } from './haptics';
-import { BUFFER_SCALE, PART_COLORS, span, type Metrics } from './theme';
+import { PART_COLORS, span, type Metrics } from './theme';
 
-const SLOTS = Array.from({ length: SOURCES }, (_, i) => i);
+const SLOTS = Array.from({ length: TRAY_SIZE }, (_, i) => i);
 const DONE = SLOTS.map(() => 1);
 const RETURN = { duration: 200, easing: Easing.out(Easing.cubic) };
 
@@ -32,7 +31,6 @@ interface DragEvent {
   slot: number;
   code: number;
   end: boolean;
-  stash: boolean;
 }
 
 interface Options {
@@ -40,11 +38,10 @@ interface Options {
   stateRef: RefObject<GameState | null>;
   m: Metrics;
   onPlace: (i: number, r: number, c: number) => void;
-  onStash: (i: number) => void;
   haptic: (kind: Buzz) => void;
 }
 
-export function useDragGestures({ state, stateRef, m, onPlace, onStash, haptic }: Options) {
+export function useDragGestures({ state, stateRef, m, onPlace, haptic }: Options) {
   const [preview, setPreview] = useState<Preview | null>(null);
   const [held, setHeld] = useState<(Piece | null)[]>(SLOTS.map(() => null));
   const [releaseSeq, setReleaseSeq] = useState(0);
@@ -81,7 +78,6 @@ export function useDragGestures({ state, stateRef, m, onPlace, onStash, haptic }
   const mouse = useSharedValue(false);
   const landing = useSharedValue<(Point | null)[]>(SLOTS.map(() => null));
   const events = useSharedValue<DragEvent[]>([]);
-  const canStash = useSharedValue(false);
   const drag = useMemo<DragShared>(
     () => ({
       slot: dragSlot,
@@ -98,40 +94,22 @@ export function useDragGestures({ state, stateRef, m, onPlace, onStash, haptic }
       target,
       lines,
       terminals,
-      canStash,
     }),
-    [
-      dragSlot,
-      touch,
-      origin,
-      pitch,
-      mouse,
-      geo,
-      landing,
-      slots,
-      missFrom,
-      back,
-      shrink,
-      target,
-      lines,
-      terminals,
-      canStash,
-    ],
+    [dragSlot, touch, origin, pitch, mouse, geo, landing, slots, missFrom, back, shrink, target, lines, terminals],
   );
 
   useEffect(() => {
     geo.set(
-      (state ? parts(state) : SLOTS.map(() => null)).map((p) =>
+      (state ? state.tray : SLOTS.map(() => null)).map((p) =>
         p ? { w: span(p.w, m), h: span(p.h, m), pw: p.w, ph: p.h, cells: p.cells.flat() } : null,
       ),
     );
     grid.set(state?.grid ?? []);
     terminals.set(state?.terminals ?? NO_TERMINALS);
     pitch.set(m.pitch);
-    shrink.set(SLOTS.map((k) => ((m.mini + m.miniGap) / m.pitch) * (k === BUFFER ? BUFFER_SCALE : 1)));
+    shrink.set(SLOTS.map(() => (m.mini + m.miniGap) / m.pitch));
     enabled.set(!!state && !state.over);
-    canStash.set(!!state && !state.over && !state.stashed);
-  }, [state, m, geo, grid, terminals, pitch, shrink, enabled, canStash]);
+  }, [state, m, geo, grid, terminals, pitch, shrink, enabled]);
 
   useEffect(() => {
     const done = released.current.splice(0);
@@ -158,7 +136,7 @@ export function useDragGestures({ state, stateRef, m, onPlace, onStash, haptic }
   const onDragStart = useCallback(
     (i: number) => {
       const s = stateRef.current;
-      const p = s ? parts(s)[i] : null;
+      const p = s ? s.tray[i] : null;
       if (!p) return;
       dragRef.current = { i, p };
       setPreview(null);
@@ -188,24 +166,23 @@ export function useDragGestures({ state, stateRef, m, onPlace, onStash, haptic }
   );
 
   const onDragEnd = useCallback(
-    (i: number, code: number, stash: boolean) => {
+    (i: number, code: number) => {
       if (dragRef.current?.i === i) {
         dragRef.current = null;
         setPreview(null);
       }
-      if (stash) onStash(i);
-      else if (code !== NO_CELL) {
+      if (code !== NO_CELL) {
         const { r, c } = decodeCell(code);
         onPlace(i, r, c);
       }
       released.current.push(i);
       setReleaseSeq((n) => n + 1);
     },
-    [onPlace, onStash],
+    [onPlace],
   );
 
   const onDragEvents = useCallback(
-    (list: DragEvent[]) => list.forEach((e) => (e.end ? onDragEnd(e.slot, e.code, e.stash) : onDragStart(e.slot))),
+    (list: DragEvent[]) => list.forEach((e) => (e.end ? onDragEnd(e.slot, e.code) : onDragStart(e.slot))),
     [onDragStart, onDragEnd],
   );
 
@@ -257,7 +234,7 @@ export function useDragGestures({ state, stateRef, m, onPlace, onStash, haptic }
             moved.set(false);
             mouse.set(e.pointerType === PointerType.MOUSE);
             dragSlot.set(i);
-            events.set([...events.get(), { slot: i, code: NO_CELL, end: false, stash: false }]);
+            events.set([...events.get(), { slot: i, code: NO_CELL, end: false }]);
           })
           .onUpdate((e) => {
             if (dragSlot.get() !== i) return;
@@ -273,8 +250,7 @@ export function useDragGestures({ state, stateRef, m, onPlace, onStash, haptic }
             const f = ghostFrame(drag, i);
             const code =
               success && moved.get() ? targetCell(f, field.get(), pitch.get(), grid.get(), geo.get()[i]) : NO_CELL;
-            const stash = code === NO_CELL && success && moved.get() && overBuffer(drag, i);
-            if (code !== NO_CELL || stash) {
+            if (code !== NO_CELL) {
               landing.set(landing.get().map((prev, k) => (k === i ? f : prev)));
             } else {
               missFrom.set(missFrom.get().map((prev, k) => (k === i ? f : prev)));
@@ -282,7 +258,7 @@ export function useDragGestures({ state, stateRef, m, onPlace, onStash, haptic }
               back.set(withTiming(DONE, RETURN));
             }
             dragSlot.set(-1);
-            events.set([...events.get(), { slot: i, code, end: true, stash }]);
+            events.set([...events.get(), { slot: i, code, end: true }]);
           }),
       ),
     [
