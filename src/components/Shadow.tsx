@@ -1,6 +1,6 @@
 import { memo } from 'react';
 import { StyleSheet } from 'react-native';
-import Animated, { useAnimatedStyle } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, type SharedValue } from 'react-native-reanimated';
 
 import { NO_CELL, OFFSCREEN, type Clears, type DragShared } from '../drag';
 import { N, type Piece } from '../engine';
@@ -20,13 +20,21 @@ function wired(target: number, lines: Clears, dr: number, dc: number) {
   return target !== NO_CELL && lines.circuit.includes(target + dr * N + dc);
 }
 
-function ShadowCell({ p, k, m, drag }: { p: Piece; k: number; m: Metrics; drag: DragShared }) {
+interface CellProps {
+  p: Piece;
+  k: number;
+  m: Metrics;
+  target: SharedValue<number>;
+  lines: SharedValue<Clears>;
+}
+
+function ShadowCell({ p, k, m, target, lines }: CellProps) {
   const [dr, dc] = p.cells[k];
   const core = k === p.core ? p.coreKind : null;
-  const cell = useAnimatedStyle(() => ({ opacity: lit(drag.target.get(), drag.lines.get(), dr, dc) ? 1 : 0.45 }));
-  const glare = useAnimatedStyle(() => ({ opacity: lit(drag.target.get(), drag.lines.get(), dr, dc) ? 1 : 0 }));
-  const part = useAnimatedStyle(() => ({ opacity: wired(drag.target.get(), drag.lines.get(), dr, dc) ? 0 : 1 }));
-  const circuit = useAnimatedStyle(() => ({ opacity: wired(drag.target.get(), drag.lines.get(), dr, dc) ? 1 : 0 }));
+  const cell = useAnimatedStyle(() => ({ opacity: lit(target.get(), lines.get(), dr, dc) ? 1 : 0.45 }));
+  const glare = useAnimatedStyle(() => ({ opacity: lit(target.get(), lines.get(), dr, dc) ? 1 : 0 }));
+  const part = useAnimatedStyle(() => ({ opacity: wired(target.get(), lines.get(), dr, dc) ? 0 : 1 }));
+  const circuit = useAnimatedStyle(() => ({ opacity: wired(target.get(), lines.get(), dr, dc) ? 1 : 0 }));
   return (
     <Animated.View style={[styles.cell, { left: dc * m.pitch, top: dr * m.pitch }, cell]}>
       <Animated.View style={part}>
@@ -51,9 +59,10 @@ const ShadowPiece = memo(function ShadowPiece({
   m: Metrics;
   drag: DragShared;
 }) {
+  const { target, lines, slot } = drag;
   const place = useAnimatedStyle(() => {
-    const code = drag.target.get();
-    const on = drag.slot.get() === i && code !== NO_CELL;
+    const code = target.get();
+    const on = slot.get() === i && code !== NO_CELL;
     return {
       opacity: on ? 1 : 0,
       left: on ? (code % N) * m.pitch : OFFSCREEN,
@@ -67,7 +76,7 @@ const ShadowPiece = memo(function ShadowPiece({
       style={[styles.piece, { width: span(p.w, m), height: span(p.h, m) }, place]}
     >
       {p.cells.map((_, k) => (
-        <ShadowCell key={k} p={p} k={k} m={m} drag={drag} />
+        <ShadowCell key={k} p={p} k={k} m={m} target={target} lines={lines} />
       ))}
     </Animated.View>
   );

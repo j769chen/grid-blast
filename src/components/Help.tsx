@@ -53,7 +53,7 @@ export const Help = memo(function Help({ visible, onClose, hapticsOn, onToggleHa
     <Modal visible={visible} transparent animationType="fade" statusBarTranslucent onRequestClose={onClose}>
       <View style={[styles.scrim, { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 16 }]}>
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessible={false} />
-        <View style={[styles.card, { maxHeight: height - insets.top - insets.bottom - 32 }]} accessibilityViewIsModal>
+        <View style={[styles.card, { maxHeight: height - insets.top - insets.bottom - 32 }]}>
           <Text style={styles.title} accessibilityRole="header">
             How to play
           </Text>
@@ -113,6 +113,7 @@ export const Help = memo(function Help({ visible, onClose, hapticsOn, onToggleHa
           <View style={styles.footer}>
             <Pressable
               onPress={onToggleHaptics}
+              hitSlop={4}
               accessibilityRole="switch"
               accessibilityLabel="Vibration"
               aria-checked={hapticsOn}

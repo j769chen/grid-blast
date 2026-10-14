@@ -121,7 +121,7 @@ describe('Tray', () => {
     await fireEvent(screen.getByLabelText('U1, red 1-cell part, 1 wide by 1 tall'), 'accessibilityAction', activate);
     expect(onSelect).toHaveBeenCalledWith(0);
     expect(screen.getByLabelText('U2, empty').props.accessibilityActions).toBeUndefined();
-    expect(screen.getByLabelText(/^U3, cyan 3-cell part/).props.accessibilityState).toEqual({ selected: true });
+    expect(screen.getByLabelText(/^U3, cyan 3-cell part/).props['aria-selected']).toBe(true);
     expect(screen.getByLabelText(/^U3, cyan/).props.accessibilityActions).toEqual([
       { name: 'activate', label: 'Choose' },
     ]);

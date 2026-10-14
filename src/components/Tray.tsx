@@ -69,8 +69,9 @@ function MiniPiece({ p, m, kind, index }: { p: Piece; m: Metrics; kind: SlotAnim
 }
 
 function HideWhileDragged({ i, drag, children }: { i: number; drag: DragShared; children: ReactNode }) {
+  const { slot, landing, back } = drag;
   const style = useAnimatedStyle(() => ({
-    opacity: drag.slot.get() === i || drag.landing.get()[i] || drag.back.get()[i] < 1 ? 0 : 1,
+    opacity: slot.get() === i || landing.get()[i] || back.get()[i] < 1 ? 0 : 1,
   }));
   return <Animated.View style={style}>{children}</Animated.View>;
 }
@@ -114,7 +115,7 @@ export const Tray = memo(function Tray({
               accessibilityRole={p ? 'button' : undefined}
               accessibilityLabel={p ? `U${i + 1}, ${describePiece(p)}` : `U${i + 1}, empty`}
               accessibilityHint={p ? 'Chooses this part, then pick a board square to place it' : undefined}
-              accessibilityState={{ selected: selected === i }}
+              aria-selected={selected === i}
               accessibilityActions={p ? CHOOSE : undefined}
               onAccessibilityAction={p ? () => onSelect(i) : undefined}
               style={[styles.slot, selected === i && styles.chosen]}
@@ -139,11 +140,11 @@ export const Tray = memo(function Tray({
               <Pressable
                 onPress={() => onRotate(i)}
                 disabled={!p}
+                hitSlop={{ top: 5, bottom: 5 }}
                 accessibilityRole="button"
                 accessibilityLabel={`Rotate U${i + 1}`}
-                accessibilityState={{ disabled: !p }}
-                accessibilityElementsHidden={!p}
-                importantForAccessibility={p ? 'auto' : 'no-hide-descendants'}
+                aria-disabled={!p}
+                aria-hidden={!p}
                 style={({ pressed }) => [styles.rot, ready && styles.rotReady, { opacity: !p ? 0 : pressed ? 0.7 : 1 }]}
               >
                 <RotateIcon color={ready ? C.pad : C.silk} />

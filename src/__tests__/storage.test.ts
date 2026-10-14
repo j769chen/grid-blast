@@ -8,6 +8,17 @@ const game = (best = 0) => newGame(best, () => 0.5);
 const stored = (key: string) => AsyncStorage.getItem(key);
 const flush = () => new Promise((r) => setTimeout(r, 0));
 
+async function withFailedReads(keys: string[], run: () => Promise<void>) {
+  const getItem = jest.mocked(AsyncStorage.getItem);
+  const real = getItem.getMockImplementation()!;
+  getItem.mockImplementation((key) => (keys.includes(key) ? Promise.reject(new Error('io')) : real(key)));
+  try {
+    await run();
+  } finally {
+    getItem.mockImplementation(real);
+  }
+}
+
 beforeEach(async () => {
   await AsyncStorage.clear();
 });
@@ -124,8 +135,9 @@ describe('loadSaved and saveGame', () => {
 
   it('only clears a saved game it was able to read', async () => {
     await AsyncStorage.setItem('overclock.game', 'kept');
-    jest.mocked(AsyncStorage.getItem).mockImplementationOnce(() => Promise.reject(new Error('io')));
-    await loadSaved();
+    await withFailedReads(['overclock.game'], async () => {
+      await loadSaved();
+    });
     await clearSavedGame();
     expect(await stored('overclock.game')).toBe('kept');
     await loadSaved();
@@ -136,10 +148,9 @@ describe('loadSaved and saveGame', () => {
   it('does not overwrite saves it failed to read', async () => {
     await AsyncStorage.setItem('overclock.best', '900');
     await AsyncStorage.setItem('overclock.game', 'kept');
-    const fail = () => Promise.reject(new Error('io'));
-    jest.mocked(AsyncStorage.getItem).mockImplementationOnce(fail).mockImplementationOnce(fail);
-    const loaded = await loadSaved();
-    expect(loaded).toEqual({ saved: null, best: 0, haptics: true, helpSeen: false });
+    await withFailedReads(['overclock.game', 'overclock.best'], async () => {
+      expect(await loadSaved()).toEqual({ saved: null, best: 0, haptics: true, helpSeen: false });
+    });
     saveGame({ ...game(), score: 50, best: 50 }, 0);
     await flush();
     expect(await stored('overclock.best')).toBe('900');
@@ -157,13 +168,8 @@ describe('help panel flag', () => {
   });
 
   it('counts as seen when it cannot be read, so the panel never reopens on every launch', async () => {
-    const getItem = jest.mocked(AsyncStorage.getItem);
-    const real = getItem.getMockImplementation()!;
-    getItem.mockImplementation((key) => (key === 'overclock.helpSeen' ? Promise.reject(new Error('io')) : real(key)));
-    try {
+    await withFailedReads(['overclock.helpSeen'], async () => {
       expect((await loadSaved()).helpSeen).toBe(true);
-    } finally {
-      getItem.mockImplementation(real);
-    }
+    });
   });
 });

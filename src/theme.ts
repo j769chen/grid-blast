@@ -10,7 +10,7 @@ export const C = {
   padRing: 'rgba(212,173,98,0.5)',
   copper: '#d08a4c',
   silk: '#eef2e6',
-  silkDim: 'rgba(238,242,230,0.55)',
+  silkDim: 'rgba(238,242,230,0.75)',
   silkLine: 'rgba(238,242,230,0.22)',
   silkFill: 'rgba(238,242,230,0.08)',
   ink: '#04140d',
