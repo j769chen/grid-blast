@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AccessibilityInfo, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { AccessibilityInfo, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Background } from './components/Background';
@@ -8,12 +8,12 @@ import { GameOver } from './components/GameOver';
 import { GhostLayer } from './components/Ghost';
 import { Hud } from './components/Hud';
 import { Tray, type SlotAnim } from './components/Tray';
-import { anyMove, newGame, placePiece, spinPiece, TRAY_SIZE, type GameState } from './engine';
+import { anyMove, BUFFER, newGame, parts, placePiece, SOURCES, spinPiece, stashPiece, type GameState } from './engine';
 import { fmt } from './format';
 import { buildFx, FX_LIFETIME, type FxSpec } from './fx';
 import { buzz, type Buzz } from './haptics';
 import { loadSaved, saveGame, saveHaptics } from './storage';
-import { C, F, metrics } from './theme';
+import { C, metrics } from './theme';
 import { useDragGestures } from './useDragGestures';
 
 export default function Game() {
@@ -30,7 +30,7 @@ export default function Game() {
   const [newBest, setNewBest] = useState(false);
   const [hapticsOn, setHapticsOn] = useState(true);
   const [anims, setAnims] = useState<SlotAnim[]>(() =>
-    Array.from({ length: TRAY_SIZE }, () => ({ key: 0, kind: 'deal' as const })),
+    Array.from({ length: SOURCES }, () => ({ key: 0, kind: 'deal' as const })),
   );
   const [armed, setArmed] = useState(false);
   const [chosen, setChosen] = useState<number | null>(null);
@@ -54,7 +54,10 @@ export default function Game() {
     saveGame(next, startBest.current);
   }, []);
 
-  const dealAll = useCallback(() => setAnims((a) => a.map((x) => ({ key: x.key + 1, kind: 'deal' }))), []);
+  const dealAll = useCallback(
+    () => setAnims((a) => a.map((x, k) => (k === BUFFER ? x : { key: x.key + 1, kind: 'deal' }))),
+    [],
+  );
 
   const startGame = useCallback(
     (best: number) => {
@@ -127,18 +130,42 @@ export default function Game() {
     [commit, dealAll, haptic],
   );
 
+  const stash = useCallback(
+    (i: number) => {
+      const s = stateRef.current;
+      if (!s) return;
+      const next = stashPiece(s, i);
+      if (!next) return;
+      commit(next);
+      const dealt = !next.stashed;
+      setAnims((a) =>
+        a.map((x, k) =>
+          k === BUFFER || (k === i && next.tray[i] && !dealt) || (dealt && k !== BUFFER)
+            ? { key: x.key + 1, kind: 'deal' }
+            : x,
+        ),
+      );
+      haptic('select');
+      AccessibilityInfo.announceForAccessibility(`Stored U${i + 1} in the buffer.`);
+    },
+    [commit, haptic],
+  );
+
   const { rootRef, fieldRef, slotRefs, measureLayout, gestures, drag, held, preview, isDragging } = useDragGestures({
     state,
     stateRef,
     m,
     onPlace: place,
+    onStash: stash,
     haptic,
   });
+
+  const sources = useMemo(() => (state ? parts(state) : []), [state]);
 
   const spin = useCallback(
     (i: number) => {
       const s = stateRef.current;
-      if (!s || s.over || !s.tray[i] || isDragging()) return;
+      if (!s || s.over || !parts(s)[i] || isDragging()) return;
       const next = spinPiece(s, i);
       if (!next) return;
       commit(next);
@@ -148,12 +175,16 @@ export default function Game() {
     [commit, haptic, isDragging],
   );
 
-  const selected = chosen !== null && state?.tray[chosen] && !state.over ? chosen : null;
+  const selected = chosen !== null && sources[chosen] && !state?.over ? chosen : null;
 
   const choose = useCallback((i: number) => {
     setChosen((cur) => (cur === i ? null : i));
-    const p = stateRef.current?.tray[i];
-    if (p) AccessibilityInfo.announceForAccessibility(`Chose U${i + 1}. Pick a board square.`);
+    const s = stateRef.current;
+    if (s && parts(s)[i]) {
+      AccessibilityInfo.announceForAccessibility(
+        `Chose ${i === BUFFER ? 'the buffer part' : `U${i + 1}`}. Pick a board square.`,
+      );
+    }
   }, []);
 
   const placeAt = useCallback(
@@ -217,9 +248,9 @@ export default function Game() {
           fieldRef={fieldRef}
           onBoardLayout={measureLayout}
           fx={fx}
-          tray={state.tray}
+          tray={sources}
           drag={drag}
-          placing={selected === null ? null : state.tray[selected]}
+          placing={selected === null ? null : sources[selected]}
           onPlaceAt={placeAt}
           terminals={state.terminals}
         />
@@ -235,13 +266,12 @@ export default function Game() {
           onRotate={spin}
           selected={selected}
           onSelect={choose}
+          buffer={state.buffer}
+          stashed={state.stashed}
+          onStash={stash}
         />
-        <Text style={[styles.note, { width: m.size }]}>
-          Rotate parts as often as you like. Square cores blast their row and column; round cores blast the 3×3 around
-          them.
-        </Text>
       </View>
-      <GhostLayer tray={state.tray} held={held} m={m} drag={drag} />
+      <GhostLayer tray={sources} held={held} m={m} drag={drag} />
       <GameOver
         visible={overVisible}
         score={state.score}
@@ -256,13 +286,4 @@ export default function Game() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.maskDeep },
   column: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16, paddingHorizontal: 16 },
-  note: {
-    fontFamily: F.mono,
-    fontSize: 10.5,
-    lineHeight: 16,
-    letterSpacing: 0.8,
-    textAlign: 'center',
-    textTransform: 'uppercase',
-    color: C.silkDim,
-  },
 });

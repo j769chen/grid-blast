@@ -27,10 +27,11 @@ function drag(): DragShared {
     slots: makeMutable(slots.map(() => ({ x: 0, y: 0, w: 0, h: 0 }))),
     missFrom: makeMutable(slots.map(() => ({ x: OFFSCREEN, y: OFFSCREEN }))),
     back: makeMutable(slots.map(() => 1)),
-    shrink: makeMutable(0.5),
+    shrink: makeMutable([0.5, 0.5, 0.5, 0.3]),
     target: makeMutable(NO_CELL),
     lines: makeMutable<Clears>({ rows: [], cols: [], path: [] }),
     terminals: makeMutable({ row: 4, col: 4 }),
+    canStash: makeMutable(true),
   };
 }
 
@@ -91,24 +92,38 @@ describe('Tray', () => {
   it('lets a screen reader choose a part', async () => {
     const onSelect = jest.fn();
     const tray = [single(), null, makePiece(3, 4)];
+    const onStash = jest.fn();
     await render(
       <Tray
         tray={tray}
         grid={Array(N * N).fill(-1)}
         m={m}
-        anims={tray.map(() => ({ key: 0, kind: 'deal' as const }))}
-        gestures={tray.map(() => Gesture.Pan())}
-        slotRefs={tray.map(() => null)}
+        anims={[0, 1, 2, 3].map(() => ({ key: 0, kind: 'deal' as const }))}
+        gestures={[0, 1, 2, 3].map(() => Gesture.Pan())}
+        slotRefs={[0, 1, 2, 3].map(() => null)}
         onTrayLayout={() => {}}
         drag={drag()}
         onRotate={() => {}}
         selected={2}
         onSelect={onSelect}
+        buffer={makePiece(1, 5)}
+        stashed={false}
+        onStash={onStash}
       />,
     );
     await fireEvent(screen.getByLabelText('U1, red 1-cell part, 1 wide by 1 tall'), 'accessibilityAction', activate);
     expect(onSelect).toHaveBeenCalledWith(0);
     expect(screen.getByLabelText('U2, empty').props.accessibilityActions).toBeUndefined();
     expect(screen.getByLabelText(/^U3, cyan 3-cell part/).props.accessibilityState).toEqual({ selected: true });
+    await fireEvent(screen.getByLabelText(/^U3, cyan/), 'accessibilityAction', {
+      nativeEvent: { actionName: 'store' },
+    });
+    expect(onStash).toHaveBeenCalledWith(2);
+    await fireEvent(
+      screen.getByLabelText('Buffer, pink 2-cell part, 2 wide by 1 tall'),
+      'accessibilityAction',
+      activate,
+    );
+    expect(onSelect).toHaveBeenCalledWith(3);
   });
 });

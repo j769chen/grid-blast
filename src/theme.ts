@@ -48,7 +48,7 @@ export interface Metrics {
 }
 
 export function metrics(width: number, height: number): Metrics {
-  const size = Math.max(240, Math.min(width - 32, 440, (height - 210) / 1.36));
+  const size = Math.max(240, Math.min(width - 32, 440, (height - 178) / 1.56));
   const pad = Math.round(size * 0.02);
   const gut = Math.round(size * 0.05);
   const field = size - pad * 2 - gut;
@@ -70,6 +70,8 @@ export function metrics(width: number, height: number): Metrics {
 }
 
 export const span = (cells: number, m: Metrics) => cells * m.pitch - m.gap;
+
+export const BUFFER_SCALE = 0.6;
 
 export const glow = (color: string, radius: number, opacity = 1) =>
   `0 0 ${radius * 2}px ${color}${

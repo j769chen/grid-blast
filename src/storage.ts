@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { isGameState, N, pickTerminals, type GameState } from './engine';
 
 const KEY = { game: 'overclock.game', best: 'overclock.best', haptics: 'overclock.haptics' };
-export const SAVE_VERSION = 3;
+export const SAVE_VERSION = 4;
 
 export interface SavedGame {
   game: GameState;
@@ -45,6 +45,11 @@ function fromV2(x: unknown): unknown {
   return { ...g, terminals: pickTerminals(grid) };
 }
 
+function fromV3(x: unknown): unknown {
+  if (!x || typeof x !== 'object' || 'buffer' in x) return x;
+  return { ...x, buffer: null, stashed: false };
+}
+
 export function parseSave(raw: string | null): SavedGame | null {
   let data: unknown;
   try {
@@ -54,12 +59,14 @@ export function parseSave(raw: string | null): SavedGame | null {
   }
   if (!data || typeof data !== 'object') return null;
   if (!('v' in data)) {
-    const legacy = fromV2(fromV1(data));
+    const legacy = fromV3(fromV2(fromV1(data)));
     return isGameState(legacy) ? { game: legacy, startBest: legacy.best } : null;
   }
   const { v, game: stored, startBest } = data as { v: unknown; game: unknown; startBest: unknown };
-  const game = v === 1 ? fromV2(fromV1(stored)) : v === 2 ? fromV2(stored) : stored;
-  if ((v !== 1 && v !== 2 && v !== SAVE_VERSION) || !isGameState(game)) return null;
+  const migrate = [(g: unknown) => fromV3(fromV2(fromV1(g))), (g: unknown) => fromV3(fromV2(g)), fromV3];
+  if (typeof v !== 'number' || v < 1 || v > SAVE_VERSION) return null;
+  const game = v < SAVE_VERSION ? migrate[v - 1](stored) : stored;
+  if (!isGameState(game)) return null;
   const start = typeof startBest === 'number' && startBest >= 0 && startBest <= game.best ? startBest : game.best;
   return { game, startBest: start };
 }
