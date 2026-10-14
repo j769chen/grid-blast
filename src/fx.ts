@@ -1,4 +1,4 @@
-import { N, neighbours, type PlaceResult } from './engine';
+import { blastCells, N, neighbours, type PlaceResult } from './engine';
 import { fmt } from './format';
 import { PART_COLORS, portCentre, span, type Metrics } from './theme';
 
@@ -20,11 +20,11 @@ interface Label {
 }
 
 export type Fx =
-  | ({ kind: 'burst'; color: string } & Box)
+  | ({ kind: 'burst'; color: string; cell: number } & Box)
   | ({ kind: 'trace'; axis: 'h' | 'v'; surge: boolean } & Box)
   | ({ kind: 'ring' } & Box)
   | ({ kind: 'blast' } & Box)
-  | ({ kind: 'spark'; hold: number } & Box)
+  | ({ kind: 'spark'; hold: number; cell: number } & Box)
   | { kind: 'bolt'; xs: number[]; ys: number[]; size: number; duration: number }
   | ({ kind: 'points' | 'combo' } & Label)
   | ({ kind: 'praise'; surge: boolean } & Label);
@@ -60,10 +60,13 @@ export function buildFx(res: PlaceResult, m: Metrics): FxSpec[] {
   res.lines.cols.forEach((c) =>
     add({ kind: 'trace', axis: 'v', surge: false, x: c * m.pitch, y: 0, w: m.cell, h: m.field }),
   );
+  const surgeAt = (n: number) => boom + 120 + n * 120;
+  const blastAt = new Map<number, number>();
   res.surges.forEach(({ idx, kind }, n) => {
+    blastCells(idx, kind).forEach((k) => blastAt.has(k) || blastAt.set(k, surgeAt(n)));
     const kr = Math.floor(idx / N);
     const kc = idx % N;
-    const delay = boom + 120 + n * 120;
+    const delay = surgeAt(n);
     if (kind === 'line') {
       add({ kind: 'trace', axis: 'h', surge: true, x: 0, y: kr * m.pitch, w: m.field, h: m.cell, delay });
       add({ kind: 'trace', axis: 'v', surge: true, x: kc * m.pitch, y: 0, w: m.cell, h: m.field, delay });
@@ -84,9 +87,10 @@ export function buildFx(res: PlaceResult, m: Metrics): FxSpec[] {
   res.cleared.forEach(({ idx, color }) => {
     const r = Math.floor(idx / N);
     const c = idx % N;
-    const dist = Math.hypot(r - pr, c - pc);
+    const dist = Math.hypot(r + 0.5 - pr, c + 0.5 - pc);
     add({
       kind: 'burst',
+      cell: idx,
       x: c * m.pitch,
       y: r * m.pitch,
       w: m.cell,
@@ -98,7 +102,7 @@ export function buildFx(res: PlaceResult, m: Metrics): FxSpec[] {
           ? dist * 28
           : nearPath.has(idx)
             ? boom + 70
-            : boom + 260 + dist * 20,
+            : (blastAt.get(idx) ?? boom) + 140 + dist * 20,
     });
   });
 
@@ -115,6 +119,7 @@ export function buildFx(res: PlaceResult, m: Metrics): FxSpec[] {
       const delay = (k + 1) * CIRCUIT_STEP;
       add({
         kind: 'spark',
+        cell: idx,
         x: (idx % N) * m.pitch,
         y: Math.floor(idx / N) * m.pitch,
         w: m.cell,

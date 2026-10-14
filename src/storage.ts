@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { isGameState, N, pickTerminals, type GameState } from './engine';
+import { isGameState, N, pickTerminals, repairGame, type GameState } from './engine';
 
 const KEY = {
   game: 'overclock.game',
@@ -84,14 +84,14 @@ export function parseSave(raw: string | null): SavedGame | null {
   if (!data || typeof data !== 'object') return null;
   if (!('v' in data)) {
     const legacy = migrate(data, 1);
-    return isGameState(legacy) ? { game: legacy, startBest: legacy.best } : null;
+    return isGameState(legacy) ? { game: repairGame(legacy), startBest: legacy.best } : null;
   }
   const { v, game: stored, startBest } = data as { v: unknown; game: unknown; startBest: unknown };
   if (typeof v !== 'number' || !Number.isInteger(v) || v < 1 || v > SAVE_VERSION) return null;
   const game = migrate(stored, v);
   if (!isGameState(game)) return null;
   const start = typeof startBest === 'number' && startBest >= 0 && startBest <= game.best ? startBest : game.best;
-  return { game, startBest: start };
+  return { game: repairGame(game), startBest: start };
 }
 
 export async function loadSaved(): Promise<Saved> {
@@ -102,7 +102,8 @@ export async function loadSaved(): Promise<Saved> {
     read(KEY.help),
   ]);
   gameWritable = game !== FAILED;
-  const bestNum = best === FAILED ? 0 : Math.max(0, Number(best) || 0);
+  const stored = best === FAILED ? -1 : Number(best);
+  const bestNum = Number.isSafeInteger(stored) && stored >= 0 ? stored : 0;
   storedBest = best === FAILED ? UNREAD : bestNum;
   return {
     saved: game === FAILED ? null : parseSave(game),
@@ -130,6 +131,6 @@ export function saveHelpSeen() {
   AsyncStorage.setItem(KEY.help, 'true').catch(() => {});
 }
 
-export function clearSavedGame() {
-  return AsyncStorage.removeItem(KEY.game).catch(() => {});
+export async function clearSavedGame() {
+  if (gameWritable) await AsyncStorage.removeItem(KEY.game).catch(() => {});
 }

@@ -84,7 +84,7 @@ export const Hud = memo(function Hud({ score, best, armed, m, onHelp, onRestart 
         <Pressable
           onPress={onRestart}
           accessibilityRole="button"
-          accessibilityLabel="New game"
+          accessibilityLabel={armed ? 'Confirm new game' : 'New game'}
           style={[styles.btn, armed && styles.armed]}
         >
           {armed ? <Text style={styles.btnText}>Restart?</Text> : <RestartIcon color={C.silk} />}

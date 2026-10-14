@@ -15,6 +15,7 @@ import {
   pickTerminals,
   placePiece,
   portCell,
+  repairGame,
   rotate,
   SHAPES,
   shortestCircuit,
@@ -421,6 +422,21 @@ describe('circuits', () => {
     expect(circuitPath(s.grid, terminals)).toEqual(route.map(([r, c]) => cellIndex(r, c)));
   });
 
+  it('takes the shorter route when a longer detour also connects', () => {
+    const s = wired();
+    [
+      [4, 1],
+      [4, 2],
+      [4, 3],
+      [4, 4],
+      [3, 4],
+      [2, 4],
+      [1, 4],
+      [0, 4],
+    ].forEach(([r, c]) => (s.grid[cellIndex(r, c)] = 3));
+    expect(circuitPath(s.grid, terminals)).toEqual(route.map(([r, c]) => cellIndex(r, c)));
+  });
+
   it('needs an unbroken chain touching both terminals', () => {
     expect(circuitPath(wired(2).grid, terminals)).toBeNull();
     expect(circuitPath(wired(0).grid, terminals)).toBeNull();
@@ -486,6 +502,17 @@ describe('circuits', () => {
     expect(circuitPath(s.grid, pickTerminals(s.grid, seeded(5)))).toBeNull();
   });
 
+  it('never picks a pair the board already connects', () => {
+    const { grid } = wired();
+    for (let k = 0; k < 1000; k++)
+      expect(
+        circuitPath(
+          grid,
+          pickTerminals(grid, () => k / 1000),
+        ),
+      ).toBeNull();
+  });
+
   it('can deal either terminal beside any square on any edge', () => {
     const grid = Array<number>(N * N).fill(-1);
     const plus = new Set<string>();
@@ -530,5 +557,29 @@ describe('circuits', () => {
       expect(ports).not.toContainEqual(terminals.plus);
       expect(ports).not.toContainEqual(terminals.minus);
     }
+  });
+});
+
+describe('repairGame', () => {
+  it('moves terminals that are too close or already connected, and drops cores on empty squares', () => {
+    const close = blank([single(), null, null], {
+      terminals: { plus: { side: 'left', at: 0 }, minus: { side: 'top', at: 0 } },
+    });
+    close.cores[cellIndex(3, 3)] = 'line';
+    const fixed = repairGame(close);
+    expect(shortestCircuit(fixed.terminals)).toBeGreaterThanOrEqual(MIN_CIRCUIT);
+    expect(fixed.cores[cellIndex(3, 3)]).toBeNull();
+
+    const terminals: Terminals = { plus: { side: 'left', at: 0 }, minus: { side: 'left', at: 7 } };
+    const connected = blank([single(), null, null], { terminals });
+    for (let r = 0; r < N; r++) connected.grid[cellIndex(r, 0)] = 1;
+    const moved = repairGame(connected);
+    expect(circuitPath(moved.grid, moved.terminals)).toBeNull();
+  });
+
+  it('leaves a sound game unchanged', () => {
+    const g = newGame(0, seeded(2));
+    g.cores[g.grid.findIndex((v) => v >= 0)] = 'area';
+    expect(repairGame(g)).toEqual(g);
   });
 });
