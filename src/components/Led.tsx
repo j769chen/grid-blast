@@ -65,16 +65,15 @@ interface LedProps {
   b: number;
   glow?: number;
   core?: CoreKind | null;
-  dim?: boolean;
   bright?: boolean;
 }
 
-export const Led = memo(function Led({ color, size, b, glow = 0, core = null, dim = false, bright = false }: LedProps) {
+export const Led = memo(function Led({ color, size, b, glow = 0, core = null, bright = false }: LedProps) {
   return (
     <View
       style={[
         styles.led,
-        { width: size, height: size, backgroundColor: color, opacity: dim ? 0.45 : 1 },
+        { width: size, height: size, backgroundColor: color },
         glow > 0 && { boxShadow: halo(color, glow, 0.7) },
       ]}
     >

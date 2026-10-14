@@ -2,6 +2,7 @@ import { describe, expect, it } from '@jest/globals';
 import type { SharedValue } from 'react-native-reanimated';
 
 import {
+  completedLines,
   decodeCell,
   DRAG_GAIN,
   encodeCell,
@@ -15,7 +16,7 @@ import {
   type Point,
   type SlotGeo,
 } from '../drag';
-import { N } from '../engine';
+import { N, type Lines } from '../engine';
 
 const empty = () => Array<number>(N * N).fill(-1);
 const square: SlotGeo = { w: 0, h: 0, pw: 2, ph: 2, cells: [0, 0, 0, 1, 1, 0, 1, 1] };
@@ -80,6 +81,8 @@ function drag(touch: { x: number; y: number }, mouse: boolean, back = [1, 1, 1])
     ]),
     back: sv(back),
     shrink: sv(0.5),
+    target: sv(NO_CELL),
+    lines: sv<Lines>({ rows: [], cols: [] }),
   };
 }
 
@@ -121,5 +124,20 @@ describe('returnFrame', () => {
   it('is idle once the return finishes or for an empty slot', () => {
     expect(returnFrame(drag({ x: 0, y: 0 }, false), 0)).toBeNull();
     expect(returnFrame(drag({ x: 0, y: 0 }, false, [1, 0, 1]), 1)).toBeNull();
+  });
+});
+
+describe('completedLines', () => {
+  it('lists the rows and columns a placement would complete', () => {
+    const grid = empty();
+    for (let c = 2; c < N; c++) grid[c] = 1;
+    for (let r = 2; r < N; r++) grid[r * N + 1] = 1;
+    expect(completedLines(grid, square, encodeCell(0, 0))).toEqual({ rows: [0], cols: [1] });
+  });
+
+  it('is empty with no target, no part, or nothing completed', () => {
+    expect(completedLines(empty(), square, NO_CELL)).toEqual({ rows: [], cols: [] });
+    expect(completedLines(empty(), null, encodeCell(0, 0))).toEqual({ rows: [], cols: [] });
+    expect(completedLines(empty(), square, encodeCell(3, 3))).toEqual({ rows: [], cols: [] });
   });
 });

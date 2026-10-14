@@ -11,7 +11,6 @@ import {
   newGame,
   newTray,
   placePiece,
-  previewCells,
   rotate,
   SHAPES,
   spinPiece,
@@ -314,19 +313,6 @@ describe('turnsToFit and game over', () => {
     const next = spinPiece(s, 0)!;
     expect(next.over).toBe(false);
     expect(anyMove(next)).toBe(true);
-  });
-});
-
-describe('previewCells', () => {
-  it('lists the covered cells, the lines they would complete, and the core cell', () => {
-    const s = blank([single(), single(), single()]);
-    for (let c = 2; c < N; c++) s.grid[cellIndex(0, c)] = 1;
-    const p = { ...bar(2), core: 1 };
-    const pv = previewCells(s, p, 0, 0);
-    expect(pv.ghost).toEqual([cellIndex(0, 0), cellIndex(0, 1)]);
-    expect(pv.hint.sort((a, b) => a - b)).toEqual(Array.from({ length: N }, (_, c) => cellIndex(0, c)));
-    expect(pv.core).toBe(cellIndex(0, 1));
-    expect(previewCells(s, bar(2), 3, 3)).toMatchObject({ hint: [], core: -1 });
   });
 });
 

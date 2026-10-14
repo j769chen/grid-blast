@@ -192,6 +192,8 @@ export default function Game() {
           fieldRef={fieldRef}
           onBoardLayout={measureLayout}
           fx={fx}
+          tray={state.tray}
+          drag={drag}
         />
         <Tray
           tray={state.tray}
