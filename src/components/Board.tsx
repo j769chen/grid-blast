@@ -10,10 +10,7 @@ import { FxLayer } from './Fx';
 import { Led, Pad } from './Led';
 import { ShadowLayer } from './Shadow';
 
-export interface Preview {
-  hint: Set<number>;
-  color: string;
-}
+export type Preview = Map<number, string>;
 
 interface BoardProps {
   grid: number[];
@@ -60,8 +57,8 @@ const Cells = memo(function Cells({ grid, cores, preview, m, placing, onPlaceAt,
   for (let i = 0; i < N * N; i++) {
     const r = Math.floor(i / N);
     const c = i % N;
-    const bright = !!preview?.hint.has(i);
-    const color = bright ? preview!.color : grid[i] >= 0 ? PART_COLORS[grid[i]] : null;
+    const lit = preview?.get(i);
+    const color = lit ?? (grid[i] >= 0 ? PART_COLORS[grid[i]] : null);
     const core = color ? cores[i] : null;
     const open = !!placing && fits(grid, placing, r, c);
     cells.push(
@@ -88,7 +85,7 @@ const Cells = memo(function Cells({ grid, cores, preview, m, placing, onPlaceAt,
         style={{ position: 'absolute', left: c * m.pitch, top: r * m.pitch }}
       >
         {color ? (
-          <Led color={color} size={m.cell} b={m.b} glow={m.glow} core={core} bright={bright} />
+          <Led color={color} size={m.cell} b={m.b} glow={m.glow} core={core} bright={!!lit} />
         ) : (
           <Pad size={m.cell} />
         )}

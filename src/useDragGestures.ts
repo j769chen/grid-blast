@@ -6,6 +6,7 @@ import { scheduleOnRN, scheduleOnUI } from 'react-native-worklets';
 
 import type { Preview } from './components/Board';
 import {
+  clearPreview,
   completedLines,
   decodeCell,
   ghostFrame,
@@ -19,7 +20,7 @@ import {
   type Slot,
   type SlotGeo,
 } from './drag';
-import { cellIndex, N, TRAY_SIZE, type GameState, type Piece, type Terminals } from './engine';
+import { TRAY_SIZE, type GameState, type Piece, type Terminals } from './engine';
 import type { Buzz } from './haptics';
 import { PART_COLORS, span, type Metrics } from './theme';
 
@@ -154,13 +155,7 @@ export function useDragGestures({ state, stateRef, m, onPlace, haptic }: Options
         setPreview(null);
         return;
       }
-      const hint = new Set<number>();
-      for (let j = 0; j < N; j++) {
-        next.rows.forEach((r) => s.grid[cellIndex(r, j)] >= 0 && hint.add(cellIndex(r, j)));
-        next.cols.forEach((c) => s.grid[cellIndex(j, c)] >= 0 && hint.add(cellIndex(j, c)));
-      }
-      next.circuit.forEach((k) => s.grid[k] >= 0 && hint.add(k));
-      setPreview({ hint, color: PART_COLORS[d.p.c] });
+      setPreview(clearPreview(s.grid, next, PART_COLORS[d.p.c]));
     },
     [stateRef],
   );
