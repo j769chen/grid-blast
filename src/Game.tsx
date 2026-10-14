@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { AccessibilityInfo, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Background } from './components/Background';
@@ -9,6 +9,7 @@ import { GhostLayer } from './components/Ghost';
 import { Hud } from './components/Hud';
 import { Tray, type SlotAnim } from './components/Tray';
 import { anyMove, newGame, placePiece, spinPiece, TRAY_SIZE, type GameState } from './engine';
+import { fmt } from './format';
 import { buildFx, FX_LIFETIME, type FxSpec } from './fx';
 import { buzz, type Buzz } from './haptics';
 import { loadSaved, saveGame, saveHaptics } from './storage';
@@ -32,6 +33,7 @@ export default function Game() {
     Array.from({ length: TRAY_SIZE }, () => ({ key: 0, kind: 'deal' as const })),
   );
   const [armed, setArmed] = useState(false);
+  const [chosen, setChosen] = useState<number | null>(null);
 
   const stateRef = useRef<GameState | null>(null);
   const mRef = useRef(m);
@@ -108,9 +110,9 @@ export default function Game() {
   const place = useCallback(
     (i: number, r: number, c: number) => {
       const s = stateRef.current;
-      if (!s) return;
+      if (!s) return null;
       const res = placePiece(s, i, r, c);
-      if (!res) return;
+      if (!res) return null;
       commit(res.state);
       if (res.dealt) dealAll();
       const items = buildFx(res, mRef.current);
@@ -120,6 +122,7 @@ export default function Game() {
         setTimeout(() => setFx((f) => f.filter((it) => !ids.has(it.id))), FX_LIFETIME);
       }
       haptic(!res.lineCount ? 'light' : res.surges.length || res.perfect ? 'heavy' : 'medium');
+      return res;
     },
     [commit, dealAll, haptic],
   );
@@ -143,6 +146,27 @@ export default function Game() {
       haptic('select');
     },
     [commit, haptic, isDragging],
+  );
+
+  const selected = chosen !== null && state?.tray[chosen] && !state.over ? chosen : null;
+
+  const choose = useCallback((i: number) => {
+    setChosen((cur) => (cur === i ? null : i));
+    const p = stateRef.current?.tray[i];
+    if (p) AccessibilityInfo.announceForAccessibility(`Chose U${i + 1}. Pick a board square.`);
+  }, []);
+
+  const placeAt = useCallback(
+    (r: number, c: number) => {
+      if (selected === null) return;
+      const res = place(selected, r, c);
+      setChosen(null);
+      if (!res) return;
+      const cleared = res.lineCount ? `${res.lineCount} ${res.lineCount > 1 ? 'lines' : 'line'} cleared. ` : '';
+      const over = res.state.over ? ' No part fits. Game over.' : '';
+      AccessibilityInfo.announceForAccessibility(`Placed. ${cleared}Score ${fmt(res.state.score)}.${over}`);
+    },
+    [selected, place],
   );
 
   const toggleHaptics = useCallback(() => {
@@ -194,6 +218,8 @@ export default function Game() {
           fx={fx}
           tray={state.tray}
           drag={drag}
+          placing={selected === null ? null : state.tray[selected]}
+          onPlaceAt={placeAt}
         />
         <Tray
           tray={state.tray}
@@ -205,6 +231,8 @@ export default function Game() {
           onTrayLayout={measureLayout}
           drag={drag}
           onRotate={spin}
+          selected={selected}
+          onSelect={choose}
         />
         <Text style={[styles.note, { width: m.size }]}>
           Rotate parts as often as you like. Square cores blast their row and column; round cores blast the 3×3 around

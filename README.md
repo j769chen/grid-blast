@@ -49,6 +49,7 @@ Peak score, the game in progress, and the vibration setting are saved on the dev
 - Touch: the part's centre floats about two cells above your finger and moves 1.4× as far, so your finger stays clear of where it lands.
 - Mouse: the part sits on the cursor and moves with it 1:1.
 - The shadow and the drop use the nearest open spot within one cell of the part.
+- Screen readers: double-tap a socket to choose its part, then double-tap a board square to place the part with its top-left corner there. Every square reads its contents, and the result of each placement is announced.
 
 ## Scripts
 
@@ -67,6 +68,7 @@ src/engine.ts           pure game logic: pieces, rotation, line clears, cores, s
 src/drag.ts             drag geometry and nearest-spot targeting (worklets)
 src/useDragGestures.ts  pan gestures, shared values, layout measuring, placement preview
 src/fx.ts               builds the line-clear effects for a placement
+src/describe.ts         screen-reader descriptions of parts and squares
 src/storage.ts          saved game, peak score and vibration setting
 src/haptics.ts          vibration patterns
 src/theme.ts            colors, fonts, board sizing

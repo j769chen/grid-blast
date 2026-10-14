@@ -2,7 +2,8 @@ import { memo, type Ref } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import type { DragShared } from '../drag';
-import { N, type CoreKind, type Piece } from '../engine';
+import { COL_LABELS, describeCell, ROW_LABELS } from '../describe';
+import { fits, N, type CoreKind, type Piece } from '../engine';
 import { C, F, PART_COLORS, type Metrics } from '../theme';
 import type { FxSpec } from '../fx';
 import { FxLayer } from './Fx';
@@ -24,10 +25,11 @@ interface BoardProps {
   fx: FxSpec[];
   tray: (Piece | null)[];
   drag: DragShared;
+  placing: Piece | null;
+  onPlaceAt: (r: number, c: number) => void;
 }
 
-const COLS = ['1', '2', '3', '4', '5', '6', '7', '8'];
-const ROWS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+const PLACE = [{ name: 'activate' as const, label: 'Place here' }];
 
 export const Board = memo(function Board({
   grid,
@@ -39,6 +41,8 @@ export const Board = memo(function Board({
   fx,
   tray,
   drag,
+  placing,
+  onPlaceAt,
 }: BoardProps) {
   const origin = m.pad + m.gut;
   const labelSize = m.size * 0.03;
@@ -50,8 +54,24 @@ export const Board = memo(function Board({
     const bright = !!preview?.hint.has(i);
     const color = bright ? preview!.color : grid[i] >= 0 ? PART_COLORS[grid[i]] : null;
     const core = color ? cores[i] : null;
+    const open = !!placing && fits(grid, placing, r, c);
     cells.push(
-      <View key={i} style={{ position: 'absolute', left: c * m.pitch, top: r * m.pitch }}>
+      <View
+        key={i}
+        accessible
+        accessibilityLabel={describeCell(r, c, grid[i], cores[i])}
+        accessibilityRole={open ? 'button' : undefined}
+        accessibilityHint={
+          placing
+            ? open
+              ? 'Places the chosen part with its top-left corner here'
+              : "The chosen part doesn't fit here"
+            : undefined
+        }
+        accessibilityActions={open ? PLACE : undefined}
+        onAccessibilityAction={open ? () => onPlaceAt(r, c) : undefined}
+        style={{ position: 'absolute', left: c * m.pitch, top: r * m.pitch }}
+      >
         {color ? (
           <Led color={color} size={m.cell} b={m.b} glow={m.glow} core={core} bright={bright} />
         ) : (
@@ -65,6 +85,7 @@ export const Board = memo(function Board({
     <View onLayout={onBoardLayout} style={styles.outline}>
       <View style={[styles.board, { width: m.size, height: m.size }]}>
         <Text
+          aria-hidden
           style={[
             styles.silk,
             { left: m.pad, top: m.pad, width: m.gut, height: m.gut, lineHeight: m.gut, fontSize: m.size * 0.02 },
@@ -72,8 +93,9 @@ export const Board = memo(function Board({
         >
           OC-1
         </Text>
-        {COLS.map((label, c) => (
+        {COL_LABELS.map((label, c) => (
           <Text
+            aria-hidden
             key={label}
             style={[
               styles.silk,
@@ -90,8 +112,9 @@ export const Board = memo(function Board({
             {label}
           </Text>
         ))}
-        {ROWS.map((label, r) => (
+        {ROW_LABELS.map((label, r) => (
           <Text
+            aria-hidden
             key={label}
             style={[
               styles.silk,
