@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COMBO_GRACE, lineScore, PTS, RAMP } from '../engine';
 import { fmt } from '../format';
 import { C, F, PART_COLORS } from '../theme';
-import { RotateIcon, VibrateIcon } from './Icons';
+import { RotateIcon, SoundIcon, VibrateIcon } from './Icons';
 import { Led, PortSign } from './Led';
 
 interface HelpProps {
@@ -13,6 +13,8 @@ interface HelpProps {
   onClose: () => void;
   hapticsOn: boolean;
   onToggleHaptics: () => void;
+  soundOn: boolean;
+  onToggleSound: () => void;
 }
 
 const ICON = 22;
@@ -45,7 +47,30 @@ function Item({ icon, children }: { icon?: ReactNode; children: string }) {
   );
 }
 
-export const Help = memo(function Help({ visible, onClose, hapticsOn, onToggleHaptics }: HelpProps) {
+function Setting({ label, on, onToggle, icon }: { label: string; on: boolean; onToggle: () => void; icon: ReactNode }) {
+  return (
+    <Pressable
+      onPress={onToggle}
+      hitSlop={4}
+      accessibilityRole="switch"
+      accessibilityLabel={label}
+      aria-checked={on}
+      style={styles.setting}
+    >
+      <View style={styles.toggle}>{icon}</View>
+      <Text style={styles.settingText}>{`${label} ${on ? 'on' : 'off'}`}</Text>
+    </Pressable>
+  );
+}
+
+export const Help = memo(function Help({
+  visible,
+  onClose,
+  hapticsOn,
+  onToggleHaptics,
+  soundOn,
+  onToggleSound,
+}: HelpProps) {
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
   const scroll = useRef<ScrollView>(null);
@@ -114,19 +139,20 @@ export const Help = memo(function Help({ visible, onClose, hapticsOn, onToggleHa
             </Section>
           </ScrollView>
           <View style={styles.footer}>
-            <Pressable
-              onPress={onToggleHaptics}
-              hitSlop={4}
-              accessibilityRole="switch"
-              accessibilityLabel="Vibration"
-              aria-checked={hapticsOn}
-              style={styles.setting}
-            >
-              <View style={styles.toggle}>
-                <VibrateIcon color={C.silk} off={!hapticsOn} />
-              </View>
-              <Text style={styles.settingText}>{hapticsOn ? 'Vibration on' : 'Vibration off'}</Text>
-            </Pressable>
+            <View style={styles.settings}>
+              <Setting
+                label="Sound"
+                on={soundOn}
+                onToggle={onToggleSound}
+                icon={<SoundIcon color={C.silk} off={!soundOn} />}
+              />
+              <Setting
+                label="Vibration"
+                on={hapticsOn}
+                onToggle={onToggleHaptics}
+                icon={<VibrateIcon color={C.silk} off={!hapticsOn} />}
+              />
+            </View>
             <Pressable
               onPress={onClose}
               accessibilityRole="button"
@@ -183,6 +209,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: C.silkLine,
   },
+  settings: { flexDirection: 'row', flexWrap: 'wrap', gap: 16 },
   setting: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   toggle: {
     width: 36,

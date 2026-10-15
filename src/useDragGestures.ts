@@ -23,7 +23,6 @@ import {
   type SlotGeo,
 } from './drag';
 import { TRAY_SIZE, type GameState, type Piece, type Terminals } from './engine';
-import type { Buzz } from './haptics';
 import { PART_COLORS, span, type Metrics } from './theme';
 
 const SLOTS = Array.from({ length: TRAY_SIZE }, (_, i) => i);
@@ -41,10 +40,10 @@ interface Options {
   stateRef: RefObject<GameState | null>;
   m: Metrics;
   onPlace: (i: number, r: number, c: number) => void;
-  haptic: (kind: Buzz) => void;
+  onLift: () => void;
 }
 
-export function useDragGestures({ state, stateRef, m, onPlace, haptic }: Options) {
+export function useDragGestures({ state, stateRef, m, onPlace, onLift }: Options) {
   const [preview, setPreview] = useState<Preview | null>(null);
   const [held, setHeld] = useState<(Piece | null)[]>(SLOTS.map(() => null));
   const [releaseSeq, setReleaseSeq] = useState(0);
@@ -143,9 +142,9 @@ export function useDragGestures({ state, stateRef, m, onPlace, haptic }: Options
       dragRef.current = { i, p };
       setPreview(null);
       setHeld((h) => h.map((x, k) => (k === i ? p : x)));
-      haptic('select');
+      onLift();
     },
-    [stateRef, haptic],
+    [stateRef, onLift],
   );
 
   const onLines = useCallback(

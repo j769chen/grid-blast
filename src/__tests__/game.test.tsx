@@ -9,6 +9,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { cellIndex, makePiece, N, type GameState } from '../engine';
 import { FX_LIFETIME } from '../fx';
 import Game from '../Game';
+import { loadSounds, play } from '../sound';
 import * as storage from '../storage';
 import { metrics } from '../theme';
 
@@ -19,6 +20,8 @@ jest.mock('expo-haptics', () => ({
   ImpactFeedbackStyle: { Light: 'light', Medium: 'medium', Heavy: 'heavy' },
   NotificationFeedbackType: { Error: 'error' },
 }));
+
+jest.mock('../sound', () => ({ play: jest.fn(), loadSounds: jest.fn() }));
 
 const safeArea = { frame: { x: 0, y: 0, width: 390, height: 800 }, insets: { top: 0, left: 0, right: 0, bottom: 0 } };
 const activate = { nativeEvent: { actionName: 'activate' } };
@@ -138,6 +141,12 @@ const vibrations = () =>
     (n, fn) => n + jest.mocked(fn).mock.calls.length,
     0,
   );
+
+const sounds = () =>
+  jest
+    .mocked(play)
+    .mock.calls.filter(([on]) => on)
+    .map(([, kind]) => kind);
 
 beforeEach(async () => {
   jest.useFakeTimers();
@@ -344,5 +353,39 @@ describe('help and settings', () => {
     await mount({ game: blankGame() });
     await place(1, 'C5');
     expect(Haptics.impactAsync).toHaveBeenCalledWith('light');
+  });
+
+  it('clicks on placement while sound is on', async () => {
+    await mount({ game: blankGame() });
+    expect(loadSounds).toHaveBeenCalled();
+    await place(1, 'C5');
+    expect(sounds()).toEqual(['place']);
+  });
+
+  it('sparks along a circuit, then sounds the emptied board when the spark lands', async () => {
+    await mount();
+    await place(1, 'A4');
+    expect(sounds()).toEqual(['spark']);
+    await tick(400);
+    expect(sounds()).toEqual(['spark', 'perfect']);
+  });
+
+  it('stays silent once sound is switched off, and remembers the setting', async () => {
+    await mount({ game: blankGame() });
+    await fireEvent.press(screen.getByRole('button', { name: 'How to play' }));
+    await fireEvent.press(screen.getByRole('switch', { name: 'Sound' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Got it' }));
+    expect(await AsyncStorage.getItem('overclock.sound')).toBe('false');
+    await place(1, 'C5');
+    expect(sounds()).toEqual([]);
+  });
+
+  it('starts silent, without loading sounds, when sound was switched off last time', async () => {
+    await mount({ game: blankGame(), saved: { sound: 'false' } });
+    expect(loadSounds).not.toHaveBeenCalled();
+    await place(1, 'C5');
+    expect(sounds()).toEqual([]);
+    await fireEvent.press(screen.getByRole('button', { name: 'How to play' }));
+    expect(screen.getByRole('switch', { name: 'Sound', checked: false })).toBeTruthy();
   });
 });

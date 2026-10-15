@@ -22,7 +22,8 @@ import {
 import { describePlacement } from './describe';
 import { buildFx, circuitDelay, FX_LIFETIME, type FxSpec } from './fx';
 import { buzz, type Buzz } from './haptics';
-import { loadSaved, saveGame, saveHaptics, saveHelpSeen } from './storage';
+import { loadSounds, play, type Sfx } from './sound';
+import { loadSaved, saveGame, saveHaptics, saveHelpSeen, saveSound } from './storage';
 import { C, metrics } from './theme';
 import { useDragGestures } from './useDragGestures';
 
@@ -39,6 +40,7 @@ export default function Game() {
   const [overVisible, setOverVisible] = useState(false);
   const [newBest, setNewBest] = useState(false);
   const [hapticsOn, setHapticsOn] = useState(true);
+  const [soundOn, setSoundOn] = useState(true);
   const [anims, setAnims] = useState<SlotAnim[]>(() =>
     Array.from({ length: TRAY_SIZE }, () => ({ key: 0, kind: 'deal' as const })),
   );
@@ -50,6 +52,7 @@ export default function Game() {
   const stateRef = useRef<GameState | null>(null);
   const mRef = useRef(m);
   const hapticsRef = useRef(true);
+  const soundRef = useRef(true);
   const helpSeen = useRef(true);
   const timers = useRef(new Set<ReturnType<typeof setTimeout>>());
   const startBest = useRef(0);
@@ -59,8 +62,12 @@ export default function Game() {
   useEffect(() => {
     hapticsRef.current = hapticsOn;
   }, [hapticsOn]);
+  useEffect(() => {
+    soundRef.current = soundOn;
+  }, [soundOn]);
 
   const haptic = useCallback((kind: Buzz) => buzz(hapticsRef.current, kind), []);
+  const sfx = useCallback((kind: Sfx) => play(soundRef.current, kind), []);
 
   const later = useCallback((run: () => void, ms: number) => {
     const t = setTimeout(() => {
@@ -102,9 +109,11 @@ export default function Game() {
   useEffect(() => {
     let alive = true;
     loadSaved()
-      .then(({ saved, best, haptics, helpSeen: seen }) => {
+      .then(({ saved, best, haptics, sound, helpSeen: seen }) => {
         if (!alive) return;
         if (!haptics) setHapticsOn(false);
+        if (sound) loadSounds();
+        else setSoundOn(false);
         if (!seen) {
           helpSeen.current = false;
           setHelpOpen(true);
@@ -133,9 +142,10 @@ export default function Game() {
       setNewBest(!!s && s.score > 0 && s.score > startBest.current);
       setOverVisible(true);
       haptic('error');
+      sfx('over');
     }, 900);
     return () => clearTimeout(t);
-  }, [over, haptic]);
+  }, [over, haptic, sfx]);
 
   useEffect(() => {
     if (!armed) return;
@@ -162,28 +172,43 @@ export default function Game() {
       }
       const kind =
         res.surges.length || res.perfect || res.circuit.length ? 'heavy' : res.lineCount ? 'medium' : 'light';
+      const sound: Sfx = res.perfect
+        ? 'perfect'
+        : res.surges.length
+          ? 'blast'
+          : res.lineCount || res.circuit.length
+            ? 'clear'
+            : 'place';
       const boom = circuitDelay(res.circuit);
       if (boom) {
         haptic('light');
+        sfx('spark');
         setWired(res.wired);
         later(() => {
           haptic(kind);
+          sfx(sound);
           setWired((w) => (w === res.wired ? null : w));
         }, boom);
       } else {
         haptic(kind);
+        sfx(sound);
       }
       return res;
     },
-    [commit, dealAll, haptic, later],
+    [commit, dealAll, haptic, sfx, later],
   );
+
+  const lift = useCallback(() => {
+    haptic('select');
+    sfx('lift');
+  }, [haptic, sfx]);
 
   const { rootRef, fieldRef, slotRefs, measureLayout, gestures, drag, held, preview, isDragging } = useDragGestures({
     state,
     stateRef,
     m,
     onPlace: place,
-    haptic,
+    onLift: lift,
   });
 
   const spin = useCallback(
@@ -195,8 +220,9 @@ export default function Game() {
       commit(next);
       setAnims((a) => a.map((x, k) => (k === i ? { key: x.key + 1, kind: 'spin' } : x)));
       haptic('select');
+      sfx('rotate');
     },
-    [commit, haptic, isDragging],
+    [commit, haptic, sfx, isDragging],
   );
 
   const selected = chosen !== null && state?.tray[chosen] && !state.over ? chosen : null;
@@ -230,6 +256,13 @@ export default function Game() {
     saveHaptics(next);
     buzz(next, 'select');
   }, [hapticsOn]);
+
+  const toggleSound = useCallback(() => {
+    const next = !soundOn;
+    setSoundOn(next);
+    saveSound(next);
+    play(next, 'rotate');
+  }, [soundOn]);
 
   const openHelp = useCallback(() => setHelpOpen(true), []);
   const closeHelp = useCallback(() => {
@@ -303,7 +336,14 @@ export default function Game() {
         newBest={newBest}
         onAgain={() => startGame(state.best)}
       />
-      <Help visible={helpOpen} onClose={closeHelp} hapticsOn={hapticsOn} onToggleHaptics={toggleHaptics} />
+      <Help
+        visible={helpOpen}
+        onClose={closeHelp}
+        hapticsOn={hapticsOn}
+        onToggleHaptics={toggleHaptics}
+        soundOn={soundOn}
+        onToggleSound={toggleSound}
+      />
     </View>
   );
 }

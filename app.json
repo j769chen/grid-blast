@@ -32,7 +32,15 @@
           "imageWidth": 160,
           "backgroundColor": "#083a26"
         }
-      ]
+      ],
+      [
+        "expo-audio",
+        {
+          "recordAudioAndroid": false,
+          "enableBackgroundPlayback": false
+        }
+      ],
+      "expo-asset"
     ],
     "backgroundColor": "#083a26",
     "extra": {

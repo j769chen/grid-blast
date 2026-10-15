@@ -6,6 +6,7 @@ const KEY = {
   game: 'overclock.game',
   best: 'overclock.best',
   haptics: 'overclock.haptics',
+  sound: 'overclock.sound',
   help: 'overclock.helpSeen',
 };
 export const SAVE_VERSION = 6;
@@ -19,6 +20,7 @@ export interface Saved {
   saved: SavedGame | null;
   best: number;
   haptics: boolean;
+  sound: boolean;
   helpSeen: boolean;
 }
 
@@ -95,10 +97,11 @@ export function parseSave(raw: string | null): SavedGame | null {
 }
 
 export async function loadSaved(): Promise<Saved> {
-  const [game, best, haptics, help] = await Promise.all([
+  const [game, best, haptics, sound, help] = await Promise.all([
     read(KEY.game),
     read(KEY.best),
     read(KEY.haptics),
+    read(KEY.sound),
     read(KEY.help),
   ]);
   gameWritable = game !== FAILED;
@@ -109,6 +112,7 @@ export async function loadSaved(): Promise<Saved> {
     saved: game === FAILED ? null : parseSave(game),
     best: bestNum,
     haptics: haptics !== 'false',
+    sound: sound !== 'false',
     helpSeen: help === FAILED || help === 'true',
   };
 }
@@ -125,6 +129,10 @@ export function saveGame(game: GameState, startBest: number) {
 
 export function saveHaptics(on: boolean) {
   AsyncStorage.setItem(KEY.haptics, String(on)).catch(() => {});
+}
+
+export function saveSound(on: boolean) {
+  AsyncStorage.setItem(KEY.sound, String(on)).catch(() => {});
 }
 
 export function saveHelpSeen() {

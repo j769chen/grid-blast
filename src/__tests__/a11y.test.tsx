@@ -1,4 +1,5 @@
 import { describe, expect, it, jest } from '@jest/globals';
+import type { ComponentProps } from 'react';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { Gesture } from 'react-native-gesture-handler';
 import { makeMutable } from 'react-native-reanimated';
@@ -190,10 +191,18 @@ describe('Tray', () => {
 
 const safeArea = { frame: { x: 0, y: 0, width: 390, height: 800 }, insets: { top: 0, left: 0, right: 0, bottom: 0 } };
 
-function help(hapticsOn: boolean, onClose = () => {}, onToggleHaptics = () => {}) {
+function help(props: Partial<ComponentProps<typeof Help>> = {}) {
   return render(
     <SafeAreaProvider initialMetrics={safeArea}>
-      <Help visible onClose={onClose} hapticsOn={hapticsOn} onToggleHaptics={onToggleHaptics} />
+      <Help
+        visible
+        onClose={() => {}}
+        hapticsOn
+        onToggleHaptics={() => {}}
+        soundOn
+        onToggleSound={() => {}}
+        {...props}
+      />
     </SafeAreaProvider>,
   );
 }
@@ -208,7 +217,7 @@ describe('Help', () => {
 
   it('explains the rules and closes', async () => {
     const onClose = jest.fn();
-    await help(true, onClose);
+    await help({ onClose });
     for (const title of ['How to play', 'Place parts', 'Rotate', 'Circuits', 'Cores', 'Scoring']) {
       expect(screen.getByRole('header', { name: title })).toBeTruthy();
     }
@@ -218,12 +227,15 @@ describe('Help', () => {
     expect(onClose).toHaveBeenCalled();
   });
 
-  it('holds the vibration setting', async () => {
+  it('holds the sound and vibration settings', async () => {
+    const onToggleSound = jest.fn();
     const onToggleHaptics = jest.fn();
-    await help(false, () => {}, onToggleHaptics);
-    const toggle = screen.getByRole('switch', { name: 'Vibration', checked: false });
-    expect(screen.getByText('Vibration off')).toBeTruthy();
-    await fireEvent.press(toggle);
+    await help({ soundOn: false, onToggleSound, onToggleHaptics });
+    expect(screen.getByText('Sound off')).toBeTruthy();
+    expect(screen.getByText('Vibration on')).toBeTruthy();
+    await fireEvent.press(screen.getByRole('switch', { name: 'Sound', checked: false }));
+    expect(onToggleSound).toHaveBeenCalled();
+    await fireEvent.press(screen.getByRole('switch', { name: 'Vibration', checked: true }));
     expect(onToggleHaptics).toHaveBeenCalled();
   });
 });
