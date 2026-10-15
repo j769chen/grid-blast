@@ -10,17 +10,22 @@ import Animated, {
 
 import { fmt } from '../format';
 import { C, F, type Metrics } from '../theme';
-import { RestartIcon } from './Icons';
+import { CalendarIcon, RestartIcon } from './Icons';
 
 interface HudProps {
   score: number;
   best: number;
   armed: boolean;
+  daily: number | null;
+  dailyNew: boolean;
   m: Metrics;
   onHelp: () => void;
   onRestart: () => void;
+  onDaily: () => void;
 }
 
+const STAT_FONT = 20;
+const DIGIT_EM = 0.6;
 const COUNT_MS = 450;
 const COUNT_STEP = 60;
 
@@ -42,8 +47,11 @@ function useCountUp(target: number) {
   return shown;
 }
 
-export const Hud = memo(function Hud({ score, best, armed, m, onHelp, onRestart }: HudProps) {
+export const Hud = memo(function Hud({ score, best, armed, daily, dailyNew, m, onHelp, onRestart, onDaily }: HudProps) {
   const shown = useCountUp(score);
+  const [statWidth, setStatWidth] = useState(0);
+  const stat = daily === null ? fmt(best) : `#${daily}`;
+  const statFont = statWidth ? Math.min(STAT_FONT, statWidth / (stat.length * DIGIT_EM)) : STAT_FONT;
   const bump = useSharedValue(1);
   const bumpStyle = useAnimatedStyle(() => ({ transform: [{ scale: bump.get() }] }));
 
@@ -54,11 +62,28 @@ export const Hud = memo(function Hud({ score, best, armed, m, onHelp, onRestart 
 
   return (
     <View style={[styles.hud, { width: m.size }]}>
-      <View style={styles.side} accessible accessibilityLabel={`Peak score ${fmt(best)}`}>
-        <Text style={styles.silk}>Peak</Text>
-        <Text style={styles.best} numberOfLines={1} adjustsFontSizeToFit>
-          {fmt(best)}
-        </Text>
+      <View style={[styles.side, styles.lead]}>
+        <Pressable
+          onPress={onDaily}
+          hitSlop={4}
+          accessibilityRole="button"
+          accessibilityLabel={daily === null ? "Today's daily circuit" : 'Back to endless game'}
+          style={[styles.btn, daily !== null && styles.on]}
+        >
+          <CalendarIcon color={daily === null ? C.silk : C.pad} />
+          {dailyNew && daily === null && <View style={styles.dot} />}
+        </Pressable>
+        <View
+          style={styles.stat}
+          onLayout={(e) => setStatWidth(e.nativeEvent.layout.width)}
+          accessible
+          accessibilityLabel={daily === null ? `Peak score ${fmt(best)}` : `Daily circuit ${daily}`}
+        >
+          <Text style={styles.silk}>{daily === null ? 'Peak' : 'Daily'}</Text>
+          <Text style={[styles.best, { fontSize: statFont }]} numberOfLines={1}>
+            {stat}
+          </Text>
+        </View>
       </View>
       <View style={styles.center}>
         <Animated.Text
@@ -87,15 +112,17 @@ export const Hud = memo(function Hud({ score, best, armed, m, onHelp, onRestart 
         >
           <Text style={styles.help}>?</Text>
         </Pressable>
-        <Pressable
-          onPress={onRestart}
-          hitSlop={4}
-          accessibilityRole="button"
-          accessibilityLabel={armed ? 'Confirm new game' : 'New game'}
-          style={[styles.btn, armed && styles.armed]}
-        >
-          {armed ? <Text style={styles.btnText}>Restart?</Text> : <RestartIcon color={C.silk} />}
-        </Pressable>
+        {daily === null && (
+          <Pressable
+            onPress={onRestart}
+            hitSlop={4}
+            accessibilityRole="button"
+            accessibilityLabel={armed ? 'Confirm new game' : 'New game'}
+            style={[styles.btn, armed && styles.armed]}
+          >
+            {armed ? <Text style={styles.btnText}>Restart?</Text> : <RestartIcon color={C.silk} />}
+          </Pressable>
+        )}
       </View>
     </View>
   );
@@ -104,10 +131,12 @@ export const Hud = memo(function Hud({ score, best, armed, m, onHelp, onRestart 
 const styles = StyleSheet.create({
   hud: { flexDirection: 'row', alignItems: 'center' },
   side: { flex: 1, gap: 2 },
+  lead: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  stat: { flex: 1, gap: 2 },
   tools: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8 },
   center: { alignItems: 'center', gap: 6, paddingHorizontal: 6 },
   silk: { fontFamily: F.mono, fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', color: C.silkLabel },
-  best: { fontFamily: F.bold, fontSize: 20, color: C.pad, fontVariant: ['tabular-nums'] },
+  best: { fontFamily: F.bold, color: C.pad, fontVariant: ['tabular-nums'] },
   score: {
     fontFamily: F.bold,
     color: C.silk,
@@ -128,6 +157,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   armed: { backgroundColor: C.danger, borderColor: C.danger },
+  on: { borderColor: C.pad },
+  dot: { position: 'absolute', top: 4, right: 4, width: 6, height: 6, borderRadius: 3, backgroundColor: C.pad },
   btnText: { fontFamily: F.mono, fontSize: 12, letterSpacing: 1, textTransform: 'uppercase', color: C.silk },
   help: { fontFamily: F.bold, fontSize: 19, lineHeight: 22, color: C.silk },
 });

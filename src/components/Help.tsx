@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COMBO_GRACE, lineScore, PTS, RAMP } from '../engine';
 import { fmt } from '../format';
 import { C, F, PART_COLORS } from '../theme';
-import { RotateIcon, SoundIcon, VibrateIcon } from './Icons';
+import { CalendarIcon, RotateIcon, SoundIcon, VibrateIcon } from './Icons';
 import { Led, PortSign } from './Led';
 
 interface HelpProps {
@@ -125,6 +125,14 @@ export const Help = memo(function Help({
                 An area core blasts the 3×3 square around it.
               </Item>
               <Item>A core goes off when it&apos;s cleared, and its blast can set off other cores.</Item>
+            </Section>
+            <Section title="Daily circuit">
+              <Item icon={<CalendarIcon size={18} color={C.silk} />}>
+                Tap the calendar for today&apos;s daily circuit. Everyone gets the same starting board and parts.
+              </Item>
+              <Item>
+                You get one try a day. Finish it on consecutive days to build a streak, then share your result.
+              </Item>
             </Section>
             <Section title="Scoring">
               {SCORING.map(([what, pts]) => (

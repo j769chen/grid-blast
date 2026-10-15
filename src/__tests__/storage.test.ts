@@ -1,14 +1,19 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+import { startDaily } from '../daily';
 import { cellIndex, circuitPath, MIN_CIRCUIT, newGame, shortestCircuit, type Terminals } from '../engine';
 import {
   clearSavedGame,
   loadSaved,
+  parseDaily,
+  parseRecord,
   parseSave,
+  saveDaily,
   saveGame,
   saveHaptics,
   saveHelpSeen,
+  saveRecord,
   saveSound,
   SAVE_VERSION,
 } from '../storage';
@@ -201,7 +206,15 @@ describe('loadSaved and saveGame', () => {
     await AsyncStorage.setItem('overclock.best', '900');
     await AsyncStorage.setItem('overclock.game', 'kept');
     await withFailedReads(['overclock.game', 'overclock.best'], async () => {
-      expect(await loadSaved()).toEqual({ saved: null, best: 0, haptics: true, sound: true, helpSeen: false });
+      expect(await loadSaved()).toEqual({
+        saved: null,
+        best: 0,
+        haptics: true,
+        sound: true,
+        helpSeen: false,
+        daily: null,
+        record: null,
+      });
     });
     saveGame({ ...game(), score: 50, best: 50 }, 0);
     await flush();
@@ -247,5 +260,38 @@ describe('help panel flag', () => {
     await withFailedReads(['overclock.helpSeen'], async () => {
       expect((await loadSaved()).helpSeen).toBe(true);
     });
+  });
+});
+
+describe('daily circuit', () => {
+  it('keeps the run in progress and the last result', async () => {
+    const run = { ...startDaily(7), moves: 4, circuits: 1 };
+    const record = { day: 6, score: 1200, circuits: 2, streak: 3 };
+    expect(await loadSaved()).toMatchObject({ daily: null, record: null });
+    saveDaily(run);
+    saveRecord(record);
+    await flush();
+    expect(await loadSaved()).toMatchObject({ daily: run, record });
+  });
+
+  it('ignores damaged saves', () => {
+    const run = startDaily(7);
+    for (const raw of ['nope', '{}', JSON.stringify({ v: SAVE_VERSION + 1, run })]) expect(parseDaily(raw)).toBeNull();
+    expect(parseDaily(JSON.stringify({ v: SAVE_VERSION, run: { ...run, day: -1 } }))).toBeNull();
+    expect(parseDaily(JSON.stringify({ v: SAVE_VERSION, run: { ...run, game: { score: 3 } } }))).toBeNull();
+    expect(parseRecord(JSON.stringify({ day: 7, score: 10, circuits: 0 }))).toBeNull();
+    expect(parseRecord(JSON.stringify({ day: 7, score: 10.5, circuits: 0, streak: 1 }))).toBeNull();
+  });
+
+  it('does not overwrite daily saves it failed to read', async () => {
+    await AsyncStorage.setItem('overclock.daily', 'kept');
+    await withFailedReads(['overclock.dailyRecord'], async () => {
+      await loadSaved();
+    });
+    saveDaily(startDaily(7));
+    saveRecord({ day: 7, score: 10, circuits: 0, streak: 1 });
+    await flush();
+    expect(await stored('overclock.daily')).toBe('kept');
+    expect(await stored('overclock.dailyRecord')).toBeNull();
   });
 });
