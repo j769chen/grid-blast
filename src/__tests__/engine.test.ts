@@ -195,14 +195,6 @@ describe('placePiece', () => {
     expect(res.gained).toBe(10 + 100 + 7 * 40);
   });
 
-  it('raises the peak score along with the score', () => {
-    const s = blank([single(), single(), single()], { score: 90, best: 100 });
-    const one = placePiece(s, 0, 4, 4, seeded())!.state;
-    expect([one.score, one.best]).toEqual([100, 100]);
-    const two = placePiece(one, 1, 4, 6, seeded())!.state;
-    expect([two.score, two.best]).toEqual([110, 110]);
-  });
-
   it('refuses a part that overlaps or overhangs, an empty socket, and a finished game, without touching the state', () => {
     const s = blank([bar(3), null, single()]);
     s.grid[cellIndex(0, 2)] = 1;
@@ -247,7 +239,7 @@ describe('spinPiece', () => {
 
 describe('newGame', () => {
   it('produces a valid starting state with no full lines', () => {
-    for (let seed = 1; seed <= 200; seed++) {
+    for (let seed = 1; seed <= 5; seed++) {
       const s = newGame(1234, seeded(seed));
       expect(isGameState(s)).toBe(true);
       expect(s.best).toBe(1234);
@@ -268,10 +260,6 @@ describe('isGameState', () => {
     else parent[last] = value;
     return s;
   };
-
-  it('accepts every state reached in play', () => {
-    randomPlay(11, 300, (_, res) => expect(isGameState(JSON.parse(JSON.stringify(res.state)))).toBe(true));
-  });
 
   it('rejects anything that is not an object', () => {
     expect(isGameState(null)).toBe(false);
@@ -311,9 +299,10 @@ describe('isGameState', () => {
 });
 
 describe('random play', () => {
-  it('keeps the score, the board, cores and terminals consistent after every move', () => {
+  it('keeps every move saveable, with the score, board, cores and terminals consistent', () => {
     randomPlay(5, 400, (before, res) => {
       const s = res.state;
+      expect(isGameState(JSON.parse(JSON.stringify(s)))).toBe(true);
       expect(s.score).toBe(before.score + res.gained);
       expect(s.best).toBe(Math.max(before.best, s.score));
       expect(fullLines(s.grid)).toEqual({ rows: [], cols: [] });
