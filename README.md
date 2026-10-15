@@ -6,10 +6,10 @@ A block puzzle set on a circuit board, for iOS, Android and the web. Built with 
 
 ```sh
 npm install
-npx expo start
+npx expo start --go
 ```
 
-- Phone: install Expo Go from the App Store or Google Play, then scan the QR code with the camera (iOS) or Expo Go (Android).
+- Phone: install Expo Go from the App Store or Google Play, then scan the QR code with the camera (iOS) or Expo Go (Android). Without `--go`, `expo start` targets a development build (see Builds and updates); press `s` in the terminal to switch.
 - Browser: press `w` in the Expo terminal, or run `npx expo start --web`.
 - Static web build: `npx expo export -p web` writes a self-contained site to `dist/`.
 
@@ -69,6 +69,18 @@ npm run lint          # ESLint via expo lint
 npm run typecheck     # tsc --noEmit
 npm run format:check  # Prettier
 ```
+
+## Builds and updates
+
+The app is linked to the EAS project `@jchen27/overclock`. Profiles live in `eas.json`, and each one publishes to the update channel of the same name.
+
+- Development build, a dev client with hot reload: `npx eas-cli@latest build --profile development --platform ios`
+- Preview build, an internal test build without dev tools: `npx eas-cli@latest build --profile preview --platform android`
+- Store build, with the build number bumped automatically: `npx eas-cli@latest build --profile production --platform all`
+- Upload the latest production build to TestFlight: `npx eas-cli@latest submit --platform ios`
+- Ship JS changes over the air: `npx eas-cli@latest update --channel preview --environment preview --message "..."`
+- Over-the-air updates only reach builds with the same app `version` (runtime policy `appVersion`). Bump `version` in `app.json` whenever a change adds or upgrades a native module, then make new builds.
+- iOS device builds need an Apple Developer account, and development and preview builds need the device registered first (`npx eas-cli@latest device:create`). Store submission needs Apple Developer or Google Play developer membership.
 
 ## Layout
 
