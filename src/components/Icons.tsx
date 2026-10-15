@@ -31,3 +31,16 @@ export function VibrateIcon({ size = 19, color, off = false }: IconProps & { off
     </Svg>
   );
 }
+
+export function SoundIcon({ size = 19, color, off = false }: IconProps & { off?: boolean }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path d="M3 9h4l5-4v14l-5-4H3z" stroke={color} {...stroke} strokeWidth={2.2} />
+      {off ? (
+        <Path d="M16 9l5 6M21 9l-5 6" stroke={color} {...stroke} />
+      ) : (
+        <Path d="M16 9a4 4 0 0 1 0 6M19 6a8 8 0 0 1 0 12" stroke={color} {...stroke} />
+      )}
+    </Svg>
+  );
+}

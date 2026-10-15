@@ -5,7 +5,6 @@ import { GestureDetector, PointerType, State } from 'react-native-gesture-handle
 
 import { decodeCell, ghostFrame, NO_CELL, returnFrame, type Point, type Slot } from '../drag';
 import { cellIndex, makePiece, N, rotate, SHAPES, type GameState, type Piece } from '../engine';
-import type { Buzz } from '../haptics';
 import { metrics, PART_COLORS, span } from '../theme';
 import { useDragGestures } from '../useDragGestures';
 
@@ -35,10 +34,10 @@ function game(tray: (Piece | null)[], over: Partial<GameState> = {}): GameState 
 type Hook = ReturnType<typeof useDragGestures>;
 let hook: Hook;
 let onPlace: jest.Mock<(i: number, r: number, c: number) => void>;
-let haptic: jest.Mock<(kind: Buzz) => void>;
+let onLift: jest.Mock<() => void>;
 
 function Harness({ state, take }: { state: GameState; take: (h: Hook) => void }) {
-  const h = useDragGestures({ state, stateRef: { current: state }, m, onPlace, haptic });
+  const h = useDragGestures({ state, stateRef: { current: state }, m, onPlace, onLift });
   take(h);
   return (
     <>
@@ -126,7 +125,7 @@ function finger(i: number, pointerType = PointerType.MOUSE) {
 beforeEach(() => {
   jest.useFakeTimers();
   onPlace = jest.fn();
-  haptic = jest.fn();
+  onLift = jest.fn();
 });
 
 afterEach(() => {
@@ -221,7 +220,7 @@ describe('dragging a part', () => {
     expect(hook.isDragging()).toBe(false);
     await f.down();
     expect(hook.isDragging()).toBe(true);
-    expect(haptic).toHaveBeenCalledWith('select');
+    expect(onLift).toHaveBeenCalledTimes(1);
     await f.move(centreOver(3, 4));
     await f.up();
     expect(hook.isDragging()).toBe(false);
@@ -238,7 +237,7 @@ describe('dragging a part', () => {
     await first.move(centreOver(3, 4));
     await first.up();
     expect(onPlace.mock.calls).toEqual([[0, 3, 4]]);
-    expect(haptic).toHaveBeenCalledTimes(1);
+    expect(onLift).toHaveBeenCalledTimes(1);
   });
 
   it('ignores an empty socket', async () => {
@@ -248,7 +247,7 @@ describe('dragging a part', () => {
     await f.move(centreOver(3, 4));
     await f.up();
     expect(onPlace).not.toHaveBeenCalled();
-    expect(haptic).not.toHaveBeenCalled();
+    expect(onLift).not.toHaveBeenCalled();
   });
 
   it('ignores drags once the game is over', async () => {
@@ -259,7 +258,7 @@ describe('dragging a part', () => {
     await f.move(centreOver(3, 4));
     await f.up();
     expect(onPlace).not.toHaveBeenCalled();
-    expect(haptic).not.toHaveBeenCalled();
+    expect(onLift).not.toHaveBeenCalled();
   });
 
   it('holds the dropped part where it landed until the board takes it, then lets go', async () => {

@@ -2,7 +2,16 @@ import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { cellIndex, circuitPath, MIN_CIRCUIT, newGame, shortestCircuit, type Terminals } from '../engine';
-import { clearSavedGame, loadSaved, parseSave, saveGame, saveHaptics, saveHelpSeen, SAVE_VERSION } from '../storage';
+import {
+  clearSavedGame,
+  loadSaved,
+  parseSave,
+  saveGame,
+  saveHaptics,
+  saveHelpSeen,
+  saveSound,
+  SAVE_VERSION,
+} from '../storage';
 
 const game = (best = 0) => newGame(best, () => 0.5);
 const stored = (key: string) => AsyncStorage.getItem(key);
@@ -192,7 +201,7 @@ describe('loadSaved and saveGame', () => {
     await AsyncStorage.setItem('overclock.best', '900');
     await AsyncStorage.setItem('overclock.game', 'kept');
     await withFailedReads(['overclock.game', 'overclock.best'], async () => {
-      expect(await loadSaved()).toEqual({ saved: null, best: 0, haptics: true, helpSeen: false });
+      expect(await loadSaved()).toEqual({ saved: null, best: 0, haptics: true, sound: true, helpSeen: false });
     });
     saveGame({ ...game(), score: 50, best: 50 }, 0);
     await flush();
@@ -210,6 +219,18 @@ describe('vibration setting', () => {
     saveHaptics(true);
     await flush();
     expect((await loadSaved()).haptics).toBe(true);
+  });
+});
+
+describe('sound setting', () => {
+  it('is on until switched off, and remembers each change', async () => {
+    expect((await loadSaved()).sound).toBe(true);
+    saveSound(false);
+    await flush();
+    expect((await loadSaved()).sound).toBe(false);
+    saveSound(true);
+    await flush();
+    expect((await loadSaved()).sound).toBe(true);
   });
 });
 

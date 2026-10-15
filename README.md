@@ -21,7 +21,7 @@ npx expo start --go
 - When all three parts are placed, a new set is dealt. Every new set has at least one part that fits in some rotation.
 - The game ends when no remaining part fits in any rotation.
 - Past 20,000 points the game gets harder: sets lean toward bigger parts with fewer single squares, cores turn up less often, and new terminals sit farther apart (up to a 12-square circuit). It reaches full strength at 80,000.
-- Tap **?** at the top of the screen for a summary of these rules. It opens on its own the first time you play. Vibration is switched on and off there too.
+- Tap **?** at the top of the screen for a summary of these rules. It opens on its own the first time you play. Sound and vibration are switched on and off there too.
 
 ## Rotation
 
@@ -52,7 +52,13 @@ npx expo start --go
 - Completing a circuit adds 50 per square on its path and 40 per square touching the path, except squares in a line cleared by the same move.
 - Emptying the whole board adds 3,000.
 
-Peak score, the game in progress, the vibration setting, and whether you've seen the rules are saved on the device (AsyncStorage, which is `localStorage` on the web).
+## Sound
+
+- Effects play when you lift, rotate or place a part, clear lines, set off a core, run a circuit spark, empty the board, and when the game ends.
+- They mix with other audio, and the phone's silent switch mutes them.
+- The effects are synthesized in code: `node scripts/make-sounds.mjs` rewrites the WAV files in `assets/sounds/`.
+
+Peak score, the game in progress, the sound and vibration settings, and whether you've seen the rules are saved on the device (AsyncStorage, which is `localStorage` on the web).
 
 ## Dragging
 
@@ -94,8 +100,10 @@ src/fx.ts               builds the line-clear effects for a placement
 src/describe.ts         screen-reader descriptions of parts, squares and placements
 src/storage.ts          saved game and its migrations, peak score, vibration setting, help-seen flag
 src/haptics.ts          vibration patterns
+src/sound.ts            sound effects
 src/theme.ts            colors, fonts, board sizing
 src/format.ts           number formatting
 src/components/         Board, Tray, Ghost, Shadow, Hud, Help, Fx, GameOver, Led, ErrorBoundary, Background, Icons
 src/__tests__/          unit tests
+scripts/make-sounds.mjs synthesizes the sound effects into assets/sounds/
 ```
