@@ -68,6 +68,7 @@ export const Hud = memo(function Hud({ score, best, armed, daily, dailyNew, m, o
           hitSlop={4}
           accessibilityRole="button"
           accessibilityLabel={daily === null ? "Today's daily circuit" : 'Back to endless game'}
+          accessibilityHint={dailyNew && daily === null ? 'Not played yet' : undefined}
           style={[styles.btn, daily !== null && styles.on]}
         >
           <CalendarIcon color={daily === null ? C.silk : C.pad} />
