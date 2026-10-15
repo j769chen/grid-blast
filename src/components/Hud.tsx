@@ -10,7 +10,7 @@ import Animated, {
 
 import { fmt } from '../format';
 import { C, F, type Metrics } from '../theme';
-import { CalendarIcon, RestartIcon } from './Icons';
+import { CalendarIcon, RestartIcon, StatsIcon } from './Icons';
 
 interface HudProps {
   score: number;
@@ -22,6 +22,7 @@ interface HudProps {
   onHelp: () => void;
   onRestart: () => void;
   onDaily: () => void;
+  onStats: () => void;
 }
 
 const STAT_FONT = 20;
@@ -47,7 +48,18 @@ function useCountUp(target: number) {
   return shown;
 }
 
-export const Hud = memo(function Hud({ score, best, armed, daily, dailyNew, m, onHelp, onRestart, onDaily }: HudProps) {
+export const Hud = memo(function Hud({
+  score,
+  best,
+  armed,
+  daily,
+  dailyNew,
+  m,
+  onHelp,
+  onRestart,
+  onDaily,
+  onStats,
+}: HudProps) {
   const shown = useCountUp(score);
   const [statWidth, setStatWidth] = useState(0);
   const stat = daily === null ? fmt(best) : `#${daily}`;
@@ -74,17 +86,23 @@ export const Hud = memo(function Hud({ score, best, armed, daily, dailyNew, m, o
           <CalendarIcon color={daily === null ? C.silk : C.pad} />
           {dailyNew && daily === null && <View style={styles.dot} />}
         </Pressable>
-        <View
+        <Pressable
+          onPress={onStats}
+          hitSlop={4}
           style={styles.stat}
           onLayout={(e) => setStatWidth(e.nativeEvent.layout.width)}
-          accessible
+          accessibilityRole="button"
           accessibilityLabel={daily === null ? `Peak score ${fmt(best)}` : `Daily circuit ${daily}`}
+          accessibilityHint="Opens your stats"
         >
-          <Text style={styles.silk}>{daily === null ? 'Peak' : 'Daily'}</Text>
+          <View style={styles.label}>
+            <Text style={styles.silk}>{daily === null ? 'Peak' : 'Daily'}</Text>
+            <StatsIcon size={11} color={C.silkLabel} />
+          </View>
           <Text style={[styles.best, { fontSize: statFont }]} numberOfLines={1}>
             {stat}
           </Text>
-        </View>
+        </Pressable>
       </View>
       <View style={styles.center}>
         <Animated.Text
@@ -134,6 +152,7 @@ const styles = StyleSheet.create({
   side: { flex: 1, gap: 2 },
   lead: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   stat: { flex: 1, gap: 2 },
+  label: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   tools: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8 },
   center: { alignItems: 'center', gap: 6, paddingHorizontal: 6 },
   silk: { fontFamily: F.mono, fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', color: C.silkLabel },

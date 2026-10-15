@@ -8,6 +8,7 @@ import { GameOver } from './components/GameOver';
 import { GhostLayer } from './components/Ghost';
 import { Help } from './components/Help';
 import { Hud } from './components/Hud';
+import { Stats } from './components/Stats';
 import { Tray, type SlotAnim } from './components/Tray';
 import {
   anyMove,
@@ -20,12 +21,22 @@ import {
   type PlaceResult,
   type Terminals,
 } from './engine';
-import { advanceDaily, dailyRand, dayNumber, finishDaily, startDaily, type DailyRecord, type DailyRun } from './daily';
+import {
+  advanceDaily,
+  currentStreak,
+  dailyRand,
+  dayNumber,
+  finishDaily,
+  startDaily,
+  type DailyRecord,
+  type DailyRun,
+} from './daily';
 import { describePlacement } from './describe';
 import { buildFx, circuitDelay, FX_LIFETIME, type FxSpec } from './fx';
 import { buzz, type Buzz } from './haptics';
 import { comboRate, loadSounds, play, type Sfx } from './sound';
-import { loadSaved, saveDaily, saveGame, saveHaptics, saveHelpSeen, saveRecord, saveSound } from './storage';
+import { emptyStats, recordDaily, recordGame, recordMove, type Stats as StatsData } from './stats';
+import { loadSaved, saveDaily, saveGame, saveHaptics, saveHelpSeen, saveRecord, saveSound, saveStats } from './storage';
 import { C, metrics } from './theme';
 import { useDragGestures } from './useDragGestures';
 import { useToday } from './useToday';
@@ -53,6 +64,8 @@ export default function Game() {
   const [helpOpen, setHelpOpen] = useState(false);
   const [dailyDay, setDailyDay] = useState<number | null>(null);
   const [record, setRecord] = useState<DailyRecord | null>(null);
+  const [statsOpen, setStatsOpen] = useState(false);
+  const [shown, setShown] = useState({ stats: emptyStats(), peak: 0 });
   const today = useToday();
 
   const stateRef = useRef<GameState | null>(null);
@@ -66,6 +79,7 @@ export default function Game() {
   const runRef = useRef<DailyRun | null>(null);
   const endlessRef = useRef<GameState | null>(null);
   const recordRef = useRef<DailyRecord | null>(null);
+  const statsRef = useRef<StatsData>(emptyStats());
   useEffect(() => {
     mRef.current = m;
   }, [m]);
@@ -94,24 +108,37 @@ export default function Game() {
 
   useEffect(() => cancelTimers, [cancelTimers]);
 
-  const commit = useCallback((next: GameState, res?: PlaceResult) => {
-    stateRef.current = next;
-    setState(next);
-    const run = runRef.current;
-    if (!inDaily.current || !run) {
-      endlessRef.current = next;
-      saveGame(next, startBest.current);
-      return;
-    }
-    const after = res ? advanceDaily(run, res) : { ...run, game: next };
-    runRef.current = after;
-    saveDaily(after);
-    if (!next.over) return;
-    const done = finishDaily(recordRef.current, after);
-    recordRef.current = done;
-    setRecord(done);
-    saveRecord(done);
+  const track = useCallback((next: StatsData) => {
+    statsRef.current = next;
+    saveStats(next);
   }, []);
+
+  const commit = useCallback(
+    (next: GameState, res?: PlaceResult) => {
+      stateRef.current = next;
+      setState(next);
+      let stats = res ? recordMove(statsRef.current, res) : statsRef.current;
+      const run = runRef.current;
+      if (!inDaily.current || !run) {
+        endlessRef.current = next;
+        saveGame(next, startBest.current);
+        if (next.over) stats = recordGame(stats, next.score);
+      } else {
+        const after = res ? advanceDaily(run, res) : { ...run, game: next };
+        runRef.current = after;
+        saveDaily(after);
+        if (next.over) {
+          const done = finishDaily(recordRef.current, after);
+          recordRef.current = done;
+          setRecord(done);
+          saveRecord(done);
+          stats = recordDaily(stats, done);
+        }
+      }
+      if (stats !== statsRef.current) track(stats);
+    },
+    [track],
+  );
 
   const dealAll = useCallback(() => setAnims((a) => a.map((x) => ({ key: x.key + 1, kind: 'deal' }))), []);
 
@@ -132,8 +159,9 @@ export default function Game() {
   useEffect(() => {
     let alive = true;
     loadSaved()
-      .then(({ saved, best, haptics, sound, helpSeen: seen, daily, record: last }) => {
+      .then(({ saved, best, haptics, sound, helpSeen: seen, daily, record: last, stats }) => {
         if (!alive) return;
+        statsRef.current = stats;
         if (!haptics) setHapticsOn(false);
         if (sound) loadSounds();
         else setSoundOn(false);
@@ -325,6 +353,11 @@ export default function Game() {
   }, [soundOn]);
 
   const openHelp = useCallback(() => setHelpOpen(true), []);
+  const openStats = useCallback(() => {
+    setShown({ stats: statsRef.current, peak: endlessRef.current?.best ?? 0 });
+    setStatsOpen(true);
+  }, []);
+  const closeStats = useCallback(() => setStatsOpen(false), []);
   const closeHelp = useCallback(() => {
     setHelpOpen(false);
     if (helpSeen.current) return;
@@ -337,12 +370,13 @@ export default function Game() {
     if (!s) return;
     if (s.over || armed) {
       setArmed(false);
+      if (!s.over && s.score > 0) track(recordGame(statsRef.current, s.score));
       startGame(s.best);
     } else {
       setArmed(true);
       AccessibilityInfo.announceForAccessibility('Tap again to start a new game.');
     }
-  }, [armed, startGame]);
+  }, [armed, startGame, track]);
 
   if (!state) {
     return (
@@ -369,6 +403,7 @@ export default function Game() {
           onHelp={openHelp}
           onRestart={restart}
           onDaily={toggleDaily}
+          onStats={openStats}
         />
         <Board
           grid={state.grid}
@@ -414,6 +449,13 @@ export default function Game() {
         onToggleHaptics={toggleHaptics}
         soundOn={soundOn}
         onToggleSound={toggleSound}
+      />
+      <Stats
+        visible={statsOpen}
+        onClose={closeStats}
+        stats={shown.stats}
+        peak={shown.peak}
+        streak={currentStreak(record, today)}
       />
     </View>
   );

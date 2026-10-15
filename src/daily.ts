@@ -45,6 +45,8 @@ export const finishDaily = (prev: DailyRecord | null, run: DailyRun): DailyRecor
   streak: prev?.day === run.day - 1 ? prev.streak + 1 : 1,
 });
 
+export const currentStreak = (r: DailyRecord | null, today: number) => (r && r.day >= today - 1 ? r.streak : 0);
+
 export const streakText = (streak: number) => `${streak}-day streak`;
 
 export const shareText = (r: DailyRecord) =>

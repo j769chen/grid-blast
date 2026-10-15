@@ -8,6 +8,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Board } from '../components/Board';
 import { Help } from '../components/Help';
 import { Hud } from '../components/Hud';
+import { Stats } from '../components/Stats';
 import { Tray } from '../components/Tray';
 import { describeCell, describePiece, describePlacement, PART_NAMES } from '../describe';
 import { NO_CELL, OFFSCREEN, type Clears, type DragShared, type Point, type Preview, type SlotGeo } from '../drag';
@@ -22,6 +23,7 @@ import {
   type Piece,
   type Terminals,
 } from '../engine';
+import { emptyStats } from '../stats';
 import { C, metrics, PART_COLORS } from '../theme';
 
 const m = metrics(390, 800);
@@ -231,6 +233,7 @@ describe('Help', () => {
         onHelp={onHelp}
         onRestart={() => {}}
         onDaily={() => {}}
+        onStats={() => {}}
       />,
     );
     await fireEvent.press(screen.getByRole('button', { name: 'How to play' }));
@@ -259,5 +262,56 @@ describe('Help', () => {
     expect(onToggleSound).toHaveBeenCalled();
     await fireEvent.press(screen.getByRole('switch', { name: 'Vibration', checked: true }));
     expect(onToggleHaptics).toHaveBeenCalled();
+  });
+});
+
+describe('Stats', () => {
+  it('opens from the peak score in the top bar', async () => {
+    const onStats = jest.fn();
+    await render(
+      <Hud
+        score={0}
+        best={4200}
+        armed={false}
+        daily={null}
+        dailyNew={false}
+        m={m}
+        onHelp={() => {}}
+        onRestart={() => {}}
+        onDaily={() => {}}
+        onStats={onStats}
+      />,
+    );
+    const peak = screen.getByRole('button', { name: 'Peak score 4,200' });
+    expect(peak.props.accessibilityHint).toBe('Opens your stats');
+    await fireEvent.press(peak);
+    expect(onStats).toHaveBeenCalled();
+  });
+
+  it('reads each stat under its heading and closes', async () => {
+    const onClose = jest.fn();
+    const stats = { ...emptyStats(), games: 4, total: 9001, lines: 1234, dailies: 2, bestStreak: 5 };
+    await render(
+      <SafeAreaProvider initialMetrics={safeArea}>
+        <Stats visible onClose={onClose} stats={stats} peak={5000} streak={3} />
+      </SafeAreaProvider>,
+    );
+    for (const title of ['Stats', 'Endless', 'Daily circuit', 'All games']) {
+      expect(screen.getByRole('header', { name: title })).toBeTruthy();
+    }
+    for (const label of [
+      'Games played: 4',
+      'Average score: 2,250',
+      'Peak score: 5,000',
+      'Dailies played: 2',
+      'Current streak: 3',
+      'Best streak: 5',
+      'Lines cleared: 1,234',
+      'Boards emptied: 0',
+    ]) {
+      expect(screen.getByLabelText(label)).toBeTruthy();
+    }
+    await fireEvent.press(screen.getByRole('button', { name: 'Done' }));
+    expect(onClose).toHaveBeenCalled();
   });
 });

@@ -50,6 +50,13 @@ npx expo start --go
 - Finishing the daily on consecutive days builds a streak. Your endless game is kept and resumes when you switch back.
 - At local midnight, or when the app returns to the foreground on a new day, a dot on the calendar shows the new daily is waiting. A daily you're partway through at midnight can still be finished and counts for its own day.
 
+## Stats
+
+- Tap the peak score at the top left to see your stats.
+- Endless: games played, average score and peak score. A game counts when no part fits, or when you restart after placing a part.
+- Daily circuit: dailies played, best daily score, current streak and best streak.
+- All games, daily included: lines cleared, circuits completed, best combo, most cores set off by one move, and boards emptied.
+
 ## Scoring
 
 - 10 points per cell placed.
@@ -66,7 +73,7 @@ npx expo start --go
 - Line clears rise a whole tone with each step of the combo, up to an octave.
 - The effects are synthesized in code: `node scripts/make-sounds.mjs` rewrites the WAV files in `assets/sounds/`.
 
-Peak score, the game in progress, today's daily circuit and your last daily result, the sound and vibration settings, and whether you've seen the rules are saved on the device (AsyncStorage, which is `localStorage` on the web).
+Peak score, stats, the game in progress, today's daily circuit and your last daily result, the sound and vibration settings, and whether you've seen the rules are saved on the device (AsyncStorage, which is `localStorage` on the web).
 
 ## Dragging
 
@@ -105,16 +112,17 @@ App.tsx                 font loading, splash screen, safe-area provider
 src/Game.tsx            game screen: state transitions, timers, layout
 src/engine.ts           pure game logic: pieces, rotation, line clears, cores, circuits and terminals, scoring, save validation
 src/daily.ts            daily circuit: day numbers, seeded deals, streaks, share text
+src/stats.ts            lifetime stats, updated from each move and finished game
 src/drag.ts             drag geometry, nearest-spot targeting and the clear preview
 src/useDragGestures.ts  pan gestures, shared values, layout measuring, preview state
 src/fx.ts               builds the line-clear effects for a placement
 src/describe.ts         screen-reader descriptions of parts, squares and placements
-src/storage.ts          saved game and its migrations, peak score, vibration setting, help-seen flag
+src/storage.ts          saved game and its migrations, peak score, stats, daily run and result, settings, help-seen flag
 src/haptics.ts          vibration patterns
 src/sound.ts            sound effects
 src/theme.ts            colors, fonts, board sizing
 src/format.ts           number formatting
-src/components/         Board, Tray, Ghost, Shadow, Hud, Help, Fx, GameOver, Led, ErrorBoundary, Background, Icons
+src/components/         Board, Tray, Ghost, Shadow, Hud, Sheet, Help, Stats, Fx, GameOver, Led, ErrorBoundary, Background, Icons
 src/__tests__/          unit tests
 scripts/make-sounds.mjs synthesizes the sound effects into assets/sounds/
 public/                 privacy and support pages, copied into the web build
