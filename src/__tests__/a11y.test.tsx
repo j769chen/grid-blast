@@ -10,7 +10,7 @@ import { Help } from '../components/Help';
 import { Hud } from '../components/Hud';
 import { Tray } from '../components/Tray';
 import { describeCell, describePiece, describePlacement, PART_NAMES } from '../describe';
-import { NO_CELL, OFFSCREEN, type Clears, type DragShared, type Point, type SlotGeo } from '../drag';
+import { NO_CELL, OFFSCREEN, type Clears, type DragShared, type Point, type Preview, type SlotGeo } from '../drag';
 import {
   cellIndex,
   COLOR_COUNT,
@@ -22,7 +22,7 @@ import {
   type Piece,
   type Terminals,
 } from '../engine';
-import { metrics, PART_COLORS } from '../theme';
+import { C, metrics, PART_COLORS } from '../theme';
 
 const m = metrics(390, 800);
 const single = (): Piece => makePiece(0, 0);
@@ -50,6 +50,7 @@ function drag(): DragShared {
 async function board(
   placing: Piece | null,
   terminals: Terminals = { plus: { side: 'left', at: 4 }, minus: { side: 'top', at: 2 } },
+  preview: Preview | null = null,
 ) {
   const onPlaceAt = jest.fn();
   const grid = Array<number>(N * N).fill(-1);
@@ -60,7 +61,7 @@ async function board(
     <Board
       grid={grid}
       cores={cores}
-      preview={null}
+      preview={preview}
       m={m}
       fieldRef={null}
       onBoardLayout={() => {}}
@@ -157,6 +158,15 @@ describe('Board', () => {
     await fireEvent(screen.getByLabelText('C4, empty'), 'accessibilityAction', activate);
     expect(onPlaceAt).toHaveBeenCalledWith(2, 3);
     expect(screen.getByLabelText('B2, red, area core').props.accessibilityActions).toBeUndefined();
+  });
+
+  it('marks squares a circuit will clear with a bolt, so the preview does not rely on colour alone', async () => {
+    const preview: Preview = new Map([
+      [cellIndex(1, 1), C.circuit],
+      [cellIndex(2, 2), PART_COLORS[3]],
+    ]);
+    await board(null, undefined, preview);
+    expect(screen.getAllByTestId('circuit-mark')).toHaveLength(1);
   });
 });
 

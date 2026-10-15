@@ -10,6 +10,7 @@ import Animated, {
   withSequence,
   withTiming,
 } from 'react-native-reanimated';
+import Svg, { Path } from 'react-native-svg';
 
 import type { CoreKind } from '../engine';
 import { C, F, glow as halo } from '../theme';
@@ -66,9 +67,18 @@ interface LedProps {
   glow?: number;
   core?: CoreKind | null;
   bright?: boolean;
+  mark?: boolean;
 }
 
-export const Led = memo(function Led({ color, size, b, glow = 0, core = null, bright = false }: LedProps) {
+export const Led = memo(function Led({
+  color,
+  size,
+  b,
+  glow = 0,
+  core = null,
+  bright = false,
+  mark = false,
+}: LedProps) {
   return (
     <View
       style={[
@@ -93,6 +103,23 @@ export const Led = memo(function Led({ color, size, b, glow = 0, core = null, br
       />
       {bright && <View style={styles.bright} />}
       {core && <Core size={size} kind={core} />}
+      {mark && (
+        <Svg
+          testID="circuit-mark"
+          width={size * 0.4}
+          height={size * 0.4}
+          viewBox="0 0 24 24"
+          style={[styles.mark, { top: size * 0.04, right: size * 0.04 }]}
+        >
+          <Path
+            d="M13.5 2 5 13.5h6L9.5 22 19 9.5h-6.5z"
+            fill="#fff"
+            stroke={C.ink}
+            strokeWidth={1.6}
+            strokeLinejoin="round"
+          />
+        </Svg>
+      )}
     </View>
   );
 });
@@ -138,6 +165,7 @@ const styles = StyleSheet.create({
   halo: { position: 'absolute', backgroundColor: 'rgba(255,255,255,0.2)' },
   spot: { position: 'absolute', backgroundColor: 'rgba(255,255,255,0.85)' },
   bright: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(255,255,255,0.18)' },
+  mark: { position: 'absolute' },
   core: {
     position: 'absolute',
     alignItems: 'center',
