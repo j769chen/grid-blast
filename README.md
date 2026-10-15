@@ -102,6 +102,7 @@ The store listing, screenshots, privacy answers and the launch checklist are in 
 - Store build, with the build number bumped automatically: `npx eas-cli@latest build --profile production --platform all`
 - Upload the latest production build to TestFlight: `npx eas-cli@latest submit --platform ios`
 - Ship JS changes over the air: `npx eas-cli@latest update --channel preview --environment preview --message "..."`
+- Every merge to `main` runs the Deploy workflow (`.github/workflows/deploy.yml`). It publishes an update to the `preview` channel and redeploys the web version to https://overclock.expo.app/. To update the store apps, run the workflow by hand from the Actions tab with the `production` channel. It needs an `EXPO_TOKEN` repository secret, made at https://expo.dev/settings/access-tokens.
 - Over-the-air updates only reach builds with the same app `version` (runtime policy `appVersion`). Bump `version` in `app.json` whenever a change adds or upgrades a native module, then make new builds.
 - iOS device builds need an Apple Developer account, and development and preview builds need the device registered first (`npx eas-cli@latest device:create`). Store submission needs Apple Developer or Google Play developer membership.
 
