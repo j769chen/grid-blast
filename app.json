@@ -34,6 +34,18 @@
         }
       ]
     ],
-    "backgroundColor": "#083a26"
+    "backgroundColor": "#083a26",
+    "extra": {
+      "eas": {
+        "projectId": "a75c53b3-c0c3-43c8-8a52-7be0e3293cd8"
+      }
+    },
+    "owner": "jchen27",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/a75c53b3-c0c3-43c8-8a52-7be0e3293cd8"
+    }
   }
 }
