@@ -17,13 +17,15 @@ import {
   spinPiece,
   TRAY_SIZE,
   type GameState,
+  type PlaceResult,
   type Terminals,
 } from './engine';
+import { advanceDaily, dailyRand, dayNumber, finishDaily, startDaily, type DailyRecord, type DailyRun } from './daily';
 import { describePlacement } from './describe';
 import { buildFx, circuitDelay, FX_LIFETIME, type FxSpec } from './fx';
 import { buzz, type Buzz } from './haptics';
 import { loadSounds, play, type Sfx } from './sound';
-import { loadSaved, saveGame, saveHaptics, saveHelpSeen, saveSound } from './storage';
+import { loadSaved, saveDaily, saveGame, saveHaptics, saveHelpSeen, saveRecord, saveSound } from './storage';
 import { C, metrics } from './theme';
 import { useDragGestures } from './useDragGestures';
 
@@ -48,6 +50,9 @@ export default function Game() {
   const [chosen, setChosen] = useState<number | null>(null);
   const [wired, setWired] = useState<Terminals | null>(null);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [dailyDay, setDailyDay] = useState<number | null>(null);
+  const [record, setRecord] = useState<DailyRecord | null>(null);
+  const [today, setToday] = useState(0);
 
   const stateRef = useRef<GameState | null>(null);
   const mRef = useRef(m);
@@ -56,6 +61,10 @@ export default function Game() {
   const helpSeen = useRef(true);
   const timers = useRef(new Set<ReturnType<typeof setTimeout>>());
   const startBest = useRef(0);
+  const inDaily = useRef(false);
+  const runRef = useRef<DailyRun | null>(null);
+  const endlessRef = useRef<GameState | null>(null);
+  const recordRef = useRef<DailyRecord | null>(null);
   useEffect(() => {
     mRef.current = m;
   }, [m]);
@@ -84,10 +93,23 @@ export default function Game() {
 
   useEffect(() => cancelTimers, [cancelTimers]);
 
-  const commit = useCallback((next: GameState) => {
+  const commit = useCallback((next: GameState, res?: PlaceResult) => {
     stateRef.current = next;
     setState(next);
-    saveGame(next, startBest.current);
+    const run = runRef.current;
+    if (!inDaily.current || !run) {
+      endlessRef.current = next;
+      saveGame(next, startBest.current);
+      return;
+    }
+    const after = res ? advanceDaily(run, res) : { ...run, game: next };
+    runRef.current = after;
+    saveDaily(after);
+    if (!next.over) return;
+    const done = finishDaily(recordRef.current, after);
+    recordRef.current = done;
+    setRecord(done);
+    saveRecord(done);
   }, []);
 
   const dealAll = useCallback(() => setAnims((a) => a.map((x) => ({ key: x.key + 1, kind: 'deal' }))), []);
@@ -109,11 +131,15 @@ export default function Game() {
   useEffect(() => {
     let alive = true;
     loadSaved()
-      .then(({ saved, best, haptics, sound, helpSeen: seen }) => {
+      .then(({ saved, best, haptics, sound, helpSeen: seen, daily, record: last }) => {
         if (!alive) return;
         if (!haptics) setHapticsOn(false);
         if (sound) loadSounds();
         else setSoundOn(false);
+        runRef.current = daily;
+        recordRef.current = last;
+        setRecord(last);
+        setToday(dayNumber(new Date()));
         if (!seen) {
           helpSeen.current = false;
           setHelpOpen(true);
@@ -136,7 +162,7 @@ export default function Game() {
 
   const over = state?.over ?? false;
   useEffect(() => {
-    if (!over) return;
+    if (!over || overVisible) return;
     const t = setTimeout(() => {
       const s = stateRef.current;
       setNewBest(!!s && s.score > 0 && s.score > startBest.current);
@@ -145,7 +171,7 @@ export default function Game() {
       sfx('over');
     }, 900);
     return () => clearTimeout(t);
-  }, [over, haptic, sfx]);
+  }, [over, overVisible, haptic, sfx]);
 
   useEffect(() => {
     if (!armed) return;
@@ -158,9 +184,10 @@ export default function Game() {
       const s = stateRef.current;
       if (!s) return null;
       const p = s.tray[i];
-      const res = placePiece(s, i, r, c);
+      const run = inDaily.current ? runRef.current : null;
+      const res = placePiece(s, i, r, c, run ? dailyRand(run.day, run.moves) : undefined);
       if (!p || !res) return null;
-      commit(res.state);
+      commit(res.state, res);
       setChosen((cur) => (cur === i || res.dealt ? null : cur));
       if (res.dealt) dealAll();
       const covered = new Set(p.cells.map(([dr, dc]) => cellIndex(r + dr, c + dc)));
@@ -224,6 +251,39 @@ export default function Game() {
     },
     [commit, haptic, sfx, isDragging],
   );
+
+  const toggleDaily = useCallback(() => {
+    const endless = endlessRef.current;
+    if (!endless || isDragging()) return;
+    cancelTimers();
+    setFx([]);
+    setWired(null);
+    setChosen(null);
+    setArmed(false);
+    const day = dayNumber(new Date());
+    setToday(day);
+    let game = endless;
+    if (inDaily.current) {
+      inDaily.current = false;
+      setDailyDay(null);
+      AccessibilityInfo.announceForAccessibility('Back to your endless game.');
+    } else {
+      let run = runRef.current;
+      if (run?.day !== day) {
+        run = startDaily(day);
+        runRef.current = run;
+        saveDaily(run);
+      }
+      game = run.game;
+      inDaily.current = true;
+      setDailyDay(day);
+      AccessibilityInfo.announceForAccessibility(`Daily circuit ${day}.`);
+    }
+    stateRef.current = game;
+    setState(game);
+    setOverVisible(game.over);
+    dealAll();
+  }, [cancelTimers, dealAll, isDragging]);
 
   const selected = chosen !== null && state?.tray[chosen] && !state.over ? chosen : null;
 
@@ -299,7 +359,17 @@ export default function Game() {
         aria-hidden={overVisible}
         style={[styles.column, { paddingTop: insets.top + 12, paddingBottom: insets.bottom + 12 }]}
       >
-        <Hud score={state.score} best={state.best} armed={armed} m={m} onHelp={openHelp} onRestart={restart} />
+        <Hud
+          score={state.score}
+          best={state.best}
+          armed={armed}
+          daily={dailyDay}
+          dailyNew={record?.day !== today}
+          m={m}
+          onHelp={openHelp}
+          onRestart={restart}
+          onDaily={toggleDaily}
+        />
         <Board
           grid={state.grid}
           cores={state.cores}
@@ -334,7 +404,8 @@ export default function Game() {
         score={state.score}
         best={state.best}
         newBest={newBest}
-        onAgain={() => startGame(state.best)}
+        daily={dailyDay !== null && record?.day === dailyDay ? record : null}
+        onAgain={dailyDay === null ? () => startGame(state.best) : toggleDaily}
       />
       <Help
         visible={helpOpen}

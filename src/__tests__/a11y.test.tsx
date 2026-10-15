@@ -210,7 +210,19 @@ function help(props: Partial<ComponentProps<typeof Help>> = {}) {
 describe('Help', () => {
   it('opens from the top bar', async () => {
     const onHelp = jest.fn();
-    await render(<Hud score={0} best={0} armed={false} m={m} onHelp={onHelp} onRestart={() => {}} />);
+    await render(
+      <Hud
+        score={0}
+        best={0}
+        armed={false}
+        daily={null}
+        dailyNew={false}
+        m={m}
+        onHelp={onHelp}
+        onRestart={() => {}}
+        onDaily={() => {}}
+      />,
+    );
     await fireEvent.press(screen.getByRole('button', { name: 'How to play' }));
     expect(onHelp).toHaveBeenCalled();
   });
@@ -218,7 +230,7 @@ describe('Help', () => {
   it('explains the rules and closes', async () => {
     const onClose = jest.fn();
     await help({ onClose });
-    for (const title of ['How to play', 'Place parts', 'Rotate', 'Circuits', 'Cores', 'Scoring']) {
+    for (const title of ['How to play', 'Place parts', 'Rotate', 'Circuits', 'Cores', 'Daily circuit', 'Scoring']) {
       expect(screen.getByRole('header', { name: title })).toBeTruthy();
     }
     expect(screen.getByLabelText('4 lines at once: 1,000')).toBeTruthy();

@@ -2,11 +2,13 @@ import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import * as Haptics from 'expo-haptics';
-import { AccessibilityInfo, DeviceEventEmitter, Dimensions } from 'react-native';
+import { AccessibilityInfo, DeviceEventEmitter, Dimensions, Share } from 'react-native';
 import { Gesture, PointerType, State, type PanGesture } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-import { cellIndex, makePiece, N, type GameState } from '../engine';
+import { advanceDaily, dailyRand, shareText, startDaily } from '../daily';
+import { cellIndex, fits, makePiece, N, placePiece, type GameState } from '../engine';
+import { fmt } from '../format';
 import { FX_LIFETIME } from '../fx';
 import Game from '../Game';
 import { loadSounds, play } from '../sound';
@@ -387,5 +389,101 @@ describe('help and settings', () => {
     expect(sounds()).toEqual([]);
     await fireEvent.press(screen.getByRole('button', { name: 'How to play' }));
     expect(screen.getByRole('switch', { name: 'Sound', checked: false })).toBeTruthy();
+  });
+});
+
+describe('daily circuit', () => {
+  const DAY = 7;
+  const dailyButton = () => screen.getByRole('button', { name: "Today's daily circuit" });
+  const backButton = () => screen.getByRole('button', { name: 'Back to endless game' });
+  const savedRun = (game: GameState, record?: object) => ({
+    daily: JSON.stringify({ v: storage.SAVE_VERSION, run: { day: DAY, moves: 5, circuits: 2, game } }),
+    ...(record && { dailyRecord: JSON.stringify(record) }),
+  });
+
+  beforeEach(() => {
+    jest.setSystemTime(new Date(2026, 9, 20, 12));
+  });
+
+  it("switches to today's daily circuit without a restart button, and back to the endless game", async () => {
+    await mount({ game: blankGame({ score: 1234, best: 2000 }) });
+    await fireEvent.press(dailyButton());
+    expect(screen.getByLabelText(`Daily circuit ${DAY}`)).toBeTruthy();
+    expect(screen.getByLabelText('Score 0')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'New game' })).toBeNull();
+    expect(storage.parseDaily(await AsyncStorage.getItem('overclock.daily'))).toEqual(startDaily(DAY));
+
+    await fireEvent.press(backButton());
+    expect(screen.getByLabelText('Score 1,234')).toBeTruthy();
+    expect(screen.getByLabelText('Peak score 2,000')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'New game' })).toBeTruthy();
+  });
+
+  it('deals the seeded daily and resumes it after relaunching, leaving the endless save alone', async () => {
+    let expected = startDaily(DAY);
+    const squares: string[] = [];
+    for (let i = 0; i < 3; i++) {
+      const { grid, tray } = expected.game;
+      const k = grid.findIndex((_, k) => fits(grid, tray[i]!, Math.floor(k / N), k % N));
+      squares.push(`${'ABCDEFGH'[Math.floor(k / N)]}${(k % N) + 1}`);
+      const res = placePiece(expected.game, i, Math.floor(k / N), k % N, dailyRand(DAY, expected.moves))!;
+      expected = advanceDaily(expected, res);
+    }
+
+    await mount({ game: blankGame() });
+    await fireEvent.press(dailyButton());
+    for (const [i, square] of squares.entries()) await place(i + 1, square);
+    expect(storage.parseDaily(await AsyncStorage.getItem('overclock.daily'))).toEqual(expected);
+    expect((await savedGame()).score).toBe(0);
+
+    await screen.unmount();
+    await render(
+      <SafeAreaProvider initialMetrics={safeArea}>
+        <Game />
+      </SafeAreaProvider>,
+    );
+    await fireEvent.press(await screen.findByRole('button', { name: "Today's daily circuit" }));
+    expect(screen.getByLabelText(`Score ${fmt(expected.game.score)}`)).toBeTruthy();
+  });
+
+  it('gives one try a day: the finished daily extends the streak and opens on its result after that', async () => {
+    await mount({ saved: savedRun(lastMoveGame(), { day: DAY - 1, score: 900, circuits: 1, streak: 4 }) });
+    await fireEvent.press(dailyButton());
+    await place(1, 'D4');
+    await tick(1000);
+    expect(screen.getByText(`Daily #${DAY}`)).toBeTruthy();
+    expect(screen.getByText('5-day streak')).toBeTruthy();
+    expect(storage.parseRecord(await AsyncStorage.getItem('overclock.dailyRecord'))).toEqual({
+      day: DAY,
+      score: 10,
+      circuits: 2,
+      streak: 5,
+    });
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Back to endless' }));
+    expect(screen.queryByText(`Daily #${DAY}`)).toBeNull();
+    jest.clearAllMocks();
+    await fireEvent.press(dailyButton());
+    expect(screen.getByText(`Daily #${DAY}`)).toBeTruthy();
+    await tick(1000);
+    expect(vibrations()).toBe(0);
+    expect(sounds()).toEqual([]);
+  });
+
+  it('shares the result, or copies it where sharing is not available', async () => {
+    const record = { day: DAY, score: 10, circuits: 2, streak: 1 };
+    await mount({ saved: savedRun({ ...lastMoveGame(), over: true }, record) });
+    await fireEvent.press(dailyButton());
+    const share = jest.spyOn(Share, 'share').mockResolvedValue({ action: Share.sharedAction });
+    await fireEvent.press(screen.getByRole('button', { name: 'Share result' }));
+    expect(share).toHaveBeenCalledWith({ message: shareText(record) });
+
+    const writeText = jest.fn(() => Promise.resolve());
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+    share.mockRejectedValue(new Error('Share is not supported in this browser'));
+    await fireEvent.press(screen.getByRole('button', { name: 'Share result' }));
+    await tick(0);
+    expect(writeText).toHaveBeenCalledWith(shareText(record));
+    expect(screen.getByRole('button', { name: 'Result copied' })).toBeTruthy();
   });
 });

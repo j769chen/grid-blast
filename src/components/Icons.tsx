@@ -44,3 +44,12 @@ export function SoundIcon({ size = 19, color, off = false }: IconProps & { off?:
     </Svg>
   );
 }
+
+export function CalendarIcon({ size = 19, color }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Rect x={3.5} y={5} width={17} height={15.5} rx={2} stroke={color} {...stroke} strokeWidth={2.2} />
+      <Path d="M3.5 10h17M8 3v4M16 3v4" stroke={color} {...stroke} strokeWidth={2.2} />
+    </Svg>
+  );
+}

@@ -43,6 +43,12 @@ npx expo start --go
 - A core detonates when a cleared line contains it.
 - A core caught in another core's blast detonates as well, so cores of either kind can chain.
 
+## Daily circuit
+
+- Tap the calendar at the top left for today's daily circuit. Everyone gets the same starting board and parts, and the same deals for the same moves, from a seed for the local date.
+- You get one try a day: the daily has no restart. When it ends, its result stays up for the rest of the day, with a Share button. Where the browser can't share, it copies the result instead.
+- Finishing the daily on consecutive days builds a streak. Your endless game is kept and resumes when you switch back.
+
 ## Scoring
 
 - 10 points per cell placed.
@@ -58,7 +64,7 @@ npx expo start --go
 - They mix with other audio, and the phone's silent switch mutes them.
 - The effects are synthesized in code: `node scripts/make-sounds.mjs` rewrites the WAV files in `assets/sounds/`.
 
-Peak score, the game in progress, the sound and vibration settings, and whether you've seen the rules are saved on the device (AsyncStorage, which is `localStorage` on the web).
+Peak score, the game in progress, today's daily circuit and your last daily result, the sound and vibration settings, and whether you've seen the rules are saved on the device (AsyncStorage, which is `localStorage` on the web).
 
 ## Dragging
 
@@ -94,6 +100,7 @@ The app is linked to the EAS project `@jchen27/overclock`. Profiles live in `eas
 App.tsx                 font loading, splash screen, safe-area provider
 src/Game.tsx            game screen: state transitions, timers, layout
 src/engine.ts           pure game logic: pieces, rotation, line clears, cores, circuits and terminals, scoring, save validation
+src/daily.ts            daily circuit: day numbers, seeded deals, streaks, share text
 src/drag.ts             drag geometry, nearest-spot targeting and the clear preview
 src/useDragGestures.ts  pan gestures, shared values, layout measuring, preview state
 src/fx.ts               builds the line-clear effects for a placement
