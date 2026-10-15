@@ -9,7 +9,7 @@ App Store text lives in `../store.config.json` and is pushed with EAS Metadata. 
 - Privacy policy: https://overclock.expo.app/privacy/
 - Contact email: qgjameschen@gmail.com
 
-The privacy and support pages are `public/privacy/` and `public/support/`. Redeploy after changing them with `npx expo export -p web && npx eas-cli@latest deploy --prod`. Keep the trailing slash in links: `/privacy` without it falls through to the game.
+The privacy and support pages are `public/privacy/` and `public/support/`. They redeploy on every merge to `main`; to redeploy by hand, run `npx expo export -p web && npx eas-cli@latest deploy --prod`. Keep the trailing slash in links: `/privacy` without it falls through to the game.
 
 ## Assets
 
