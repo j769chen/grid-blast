@@ -1,0 +1,83 @@
+:root {
+  color-scheme: dark;
+  --bg: #083a26;
+  --card: #052b1c;
+  --text: #eef2e6;
+  --dim: rgba(238, 242, 230, 0.7);
+  --line: rgba(212, 173, 98, 0.35);
+  --accent: #d4ad62;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font:
+    500 17px/1.6 'Chakra Petch',
+    system-ui,
+    sans-serif;
+}
+
+main {
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 48px 16px 64px;
+}
+
+a {
+  color: var(--accent);
+}
+
+.eyebrow {
+  margin: 0;
+  font-size: 13px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+.eyebrow a {
+  text-decoration: none;
+}
+
+h1 {
+  margin: 8px 0 4px;
+  font-size: 34px;
+  line-height: 1.2;
+}
+
+h2 {
+  margin: 32px 0 8px;
+  font-size: 20px;
+  color: var(--accent);
+}
+
+.meta {
+  margin: 0 0 24px;
+  color: var(--dim);
+}
+
+.lead {
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+}
+
+dt {
+  margin-top: 16px;
+  font-weight: 700;
+}
+
+dd {
+  margin: 4px 0 0;
+  color: var(--dim);
+}
+
+.links {
+  margin-top: 40px;
+  color: var(--dim);
+}

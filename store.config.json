@@ -1,0 +1,58 @@
+{
+  "configVersion": 0,
+  "apple": {
+    "copyright": "2026 James Chen",
+    "categories": [["GAMES", "GAMES_PUZZLE", "GAMES_CASUAL"]],
+    "info": {
+      "en-US": {
+        "title": "Overclock: Circuit Puzzle",
+        "subtitle": "Clear lines. Wire circuits.",
+        "promoText": "A new daily circuit every day: the same board and parts for everyone, one try, and a streak to keep alive.",
+        "description": "Overclock is a block puzzle set on a circuit board.\n\nDrag parts onto the 8×8 board and fill rows and columns to clear them. Turn parts as often as you like. The game ends when no part fits anywhere, in any rotation.\n\nWIRE CIRCUITS\nPower terminals sit beside the board. Join + to − with an unbroken chain of filled squares and a spark runs the path, clearing it and every square it touches. While you drag, the squares a circuit will clear light up with a lightning mark.\n\nSET OFF CORES\nSome parts carry a glowing core. Line cores blast their whole row and column, area cores blast the 3×3 square around them, and one blast can set off the next core.\n\nCHAIN COMBOS\nEvery move that clears something builds your combo and multiplies your line points. Empty the whole board for a 3,000-point bonus.\n\nTHE DAILY CIRCUIT\nA new puzzle every day at midnight. Everyone starts with the same board and parts, you get one try, and finishing on consecutive days builds a streak you can share.\n\nGETS HARDER AS YOU GO\nPast 20,000 points the parts get bigger, cores get rarer and circuits stretch longer.\n\nNO ADS, NO ACCOUNTS, NO TRACKING\nPlay offline. Your games stay on your device. Sound effects, vibration and screen reader support are built in.",
+        "keywords": [
+          "block",
+          "blocks",
+          "grid",
+          "8x8",
+          "lines",
+          "daily",
+          "streak",
+          "brain",
+          "logic",
+          "casual",
+          "offline",
+          "wire",
+          "spark",
+          "combo",
+          "cores",
+          "relax"
+        ],
+        "marketingUrl": "https://overclock.expo.app/",
+        "supportUrl": "https://overclock.expo.app/support/",
+        "privacyPolicyUrl": "https://overclock.expo.app/privacy/"
+      }
+    },
+    "advisory": {
+      "alcoholTobaccoOrDrugUseOrReferences": "NONE",
+      "contests": "NONE",
+      "gambling": false,
+      "gamblingSimulated": "NONE",
+      "horrorOrFearThemes": "NONE",
+      "matureOrSuggestiveThemes": "NONE",
+      "medicalOrTreatmentInformation": "NONE",
+      "profanityOrCrudeHumor": "NONE",
+      "sexualContentGraphicAndNudity": "NONE",
+      "sexualContentOrNudity": "NONE",
+      "unrestrictedWebAccess": false,
+      "violenceCartoonOrFantasy": "NONE",
+      "violenceRealistic": "NONE",
+      "violenceRealisticProlongedGraphicOrSadistic": "NONE",
+      "kidsAgeBand": null,
+      "ageRatingOverride": "NONE",
+      "koreaAgeRatingOverride": "NONE"
+    },
+    "release": {
+      "automaticRelease": false
+    }
+  }
+}

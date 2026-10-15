@@ -86,7 +86,9 @@ npm run format:check  # Prettier
 
 ## Builds and updates
 
-The app is linked to the EAS project `@jchen27/overclock`. Profiles live in `eas.json`, and each one publishes to the update channel of the same name.
+The app is linked to the EAS project `@jchen27/overclock`. Profiles live in `eas.json`, and each one publishes to the update channel of the same name. The iOS app is iPhone only; iPads run it in iPhone mode.
+
+The store listing, screenshots, privacy answers and the launch checklist are in [store/README.md](store/README.md). The web version, privacy policy and support page are live at https://overclock.expo.app/.
 
 - Development build, a dev client with hot reload: `npx eas-cli@latest build --profile development --platform ios`
 - Preview build, an internal test build without dev tools: `npx eas-cli@latest build --profile preview --platform android`
@@ -115,4 +117,6 @@ src/format.ts           number formatting
 src/components/         Board, Tray, Ghost, Shadow, Hud, Help, Fx, GameOver, Led, ErrorBoundary, Background, Icons
 src/__tests__/          unit tests
 scripts/make-sounds.mjs synthesizes the sound effects into assets/sounds/
+public/                 privacy and support pages, copied into the web build
+store/                  store listing, screenshots and launch checklist; App Store text is in store.config.json
 ```
