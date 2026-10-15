@@ -112,8 +112,9 @@ export const Help = memo(function Help({
               <Item icon={<PortSign sign="−" size={18} />}>
                 Fill both of those squares and join them with filled squares touching edge to edge.
               </Item>
-              <Item icon={<Led color={C.circuit} size={ICON} b={2} bright />}>
-                The path and every filled square touching it clear. While you drag, they light up violet.
+              <Item icon={<Led color={C.circuit} size={ICON} b={2} bright mark />}>
+                The path and every filled square touching it clear. While you drag, they light up violet with a
+                lightning mark.
               </Item>
               <Item>Both terminals then move somewhere new.</Item>
             </Section>

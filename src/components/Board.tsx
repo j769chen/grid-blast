@@ -80,7 +80,7 @@ const Cells = memo(function Cells({ grid, cores, preview, m, placing, onPlaceAt,
         style={{ position: 'absolute', left: c * m.pitch, top: r * m.pitch }}
       >
         {color ? (
-          <Led color={color} size={m.cell} b={m.b} glow={m.glow} core={core} bright={!!lit} />
+          <Led color={color} size={m.cell} b={m.b} glow={m.glow} core={core} bright={!!lit} mark={lit === C.circuit} />
         ) : (
           <Pad size={m.cell} />
         )}
