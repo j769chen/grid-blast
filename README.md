@@ -48,6 +48,7 @@ npx expo start --go
 - Tap the calendar at the top left for today's daily circuit. Everyone gets the same starting board and parts, and the same deals for the same moves, from a seed for the local date.
 - You get one try a day: the daily has no restart. When it ends, its result stays up for the rest of the day, with a Share button. Where the browser can't share, it copies the result instead.
 - Finishing the daily on consecutive days builds a streak. Your endless game is kept and resumes when you switch back.
+- At local midnight, or when the app returns to the foreground on a new day, a dot on the calendar shows the new daily is waiting. A daily you're partway through at midnight can still be finished and counts for its own day.
 
 ## Scoring
 

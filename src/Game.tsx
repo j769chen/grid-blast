@@ -28,6 +28,7 @@ import { loadSounds, play, type Sfx } from './sound';
 import { loadSaved, saveDaily, saveGame, saveHaptics, saveHelpSeen, saveRecord, saveSound } from './storage';
 import { C, metrics } from './theme';
 import { useDragGestures } from './useDragGestures';
+import { useToday } from './useToday';
 
 export default function Game() {
   const insets = useSafeAreaInsets();
@@ -52,7 +53,7 @@ export default function Game() {
   const [helpOpen, setHelpOpen] = useState(false);
   const [dailyDay, setDailyDay] = useState<number | null>(null);
   const [record, setRecord] = useState<DailyRecord | null>(null);
-  const [today, setToday] = useState(0);
+  const today = useToday();
 
   const stateRef = useRef<GameState | null>(null);
   const mRef = useRef(m);
@@ -139,7 +140,6 @@ export default function Game() {
         runRef.current = daily;
         recordRef.current = last;
         setRecord(last);
-        setToday(dayNumber(new Date()));
         if (!seen) {
           helpSeen.current = false;
           setHelpOpen(true);
@@ -261,7 +261,6 @@ export default function Game() {
     setChosen(null);
     setArmed(false);
     const day = dayNumber(new Date());
-    setToday(day);
     let game = endless;
     if (inDaily.current) {
       inDaily.current = false;

@@ -470,6 +470,15 @@ describe('daily circuit', () => {
     expect(sounds()).toEqual([]);
   });
 
+  it('marks the next daily as not played yet once midnight passes', async () => {
+    await mount({
+      saved: savedRun({ ...lastMoveGame(), over: true }, { day: DAY, score: 10, circuits: 2, streak: 1 }),
+    });
+    expect(dailyButton().props.accessibilityHint).toBeUndefined();
+    await tick(12 * 60 * 60 * 1000 + 1000);
+    expect(dailyButton().props.accessibilityHint).toBe('Not played yet');
+  });
+
   it('shares the result, or copies it where sharing is not available', async () => {
     const record = { day: DAY, score: 10, circuits: 2, streak: 1 };
     await mount({ saved: savedRun({ ...lastMoveGame(), over: true }, record) });
