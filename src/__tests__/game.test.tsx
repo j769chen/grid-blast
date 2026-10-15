@@ -11,7 +11,7 @@ import { cellIndex, fits, makePiece, N, placePiece, type GameState } from '../en
 import { fmt } from '../format';
 import { FX_LIFETIME } from '../fx';
 import Game from '../Game';
-import { loadSounds, play } from '../sound';
+import { comboRate, loadSounds, play } from '../sound';
 import * as storage from '../storage';
 import { metrics } from '../theme';
 
@@ -23,7 +23,11 @@ jest.mock('expo-haptics', () => ({
   NotificationFeedbackType: { Error: 'error' },
 }));
 
-jest.mock('../sound', () => ({ play: jest.fn(), loadSounds: jest.fn() }));
+jest.mock('../sound', () => ({
+  ...jest.requireActual<typeof import('../sound')>('../sound'),
+  play: jest.fn(),
+  loadSounds: jest.fn(),
+}));
 
 const safeArea = { frame: { x: 0, y: 0, width: 390, height: 800 }, insets: { top: 0, left: 0, right: 0, bottom: 0 } };
 const activate = { nativeEvent: { actionName: 'activate' } };
@@ -370,6 +374,15 @@ describe('help and settings', () => {
     expect(sounds()).toEqual(['spark']);
     await tick(400);
     expect(sounds()).toEqual(['spark', 'perfect']);
+  });
+
+  it('raises the pitch of a line clear with the combo', async () => {
+    const game = blankGame({ combo: 2 });
+    for (let c = 0; c < N - 1; c++) game.grid[c] = 0;
+    game.grid[cellIndex(3, 3)] = 0;
+    await mount({ game });
+    await place(1, 'A8');
+    expect(play).toHaveBeenCalledWith(true, 'clear', comboRate(3));
   });
 
   it('stays silent once sound is switched off, and remembers the setting', async () => {

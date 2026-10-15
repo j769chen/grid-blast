@@ -24,7 +24,7 @@ import { advanceDaily, dailyRand, dayNumber, finishDaily, startDaily, type Daily
 import { describePlacement } from './describe';
 import { buildFx, circuitDelay, FX_LIFETIME, type FxSpec } from './fx';
 import { buzz, type Buzz } from './haptics';
-import { loadSounds, play, type Sfx } from './sound';
+import { comboRate, loadSounds, play, type Sfx } from './sound';
 import { loadSaved, saveDaily, saveGame, saveHaptics, saveHelpSeen, saveRecord, saveSound } from './storage';
 import { C, metrics } from './theme';
 import { useDragGestures } from './useDragGestures';
@@ -77,7 +77,7 @@ export default function Game() {
   }, [soundOn]);
 
   const haptic = useCallback((kind: Buzz) => buzz(hapticsRef.current, kind), []);
-  const sfx = useCallback((kind: Sfx) => play(soundRef.current, kind), []);
+  const sfx = useCallback((kind: Sfx, rate?: number) => play(soundRef.current, kind, rate), []);
 
   const later = useCallback((run: () => void, ms: number) => {
     const t = setTimeout(() => {
@@ -206,6 +206,7 @@ export default function Game() {
           : res.lineCount || res.circuit.length
             ? 'clear'
             : 'place';
+      const rate = sound === 'clear' ? comboRate(res.state.combo) : 1;
       const boom = circuitDelay(res.circuit);
       if (boom) {
         haptic('light');
@@ -213,12 +214,12 @@ export default function Game() {
         setWired(res.wired);
         later(() => {
           haptic(kind);
-          sfx(sound);
+          sfx(sound, rate);
           setWired((w) => (w === res.wired ? null : w));
         }, boom);
       } else {
         haptic(kind);
-        sfx(sound);
+        sfx(sound, rate);
       }
       return res;
     },

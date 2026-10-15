@@ -63,6 +63,7 @@ npx expo start --go
 
 - Effects play when you lift, rotate or place a part, clear lines, set off a core, run a circuit spark, empty the board, and when the game ends.
 - They mix with other audio, and the phone's silent switch mutes them.
+- Line clears rise a whole tone with each step of the combo, up to an octave.
 - The effects are synthesized in code: `node scripts/make-sounds.mjs` rewrites the WAV files in `assets/sounds/`.
 
 Peak score, the game in progress, today's daily circuit and your last daily result, the sound and vibration settings, and whether you've seen the rules are saved on the device (AsyncStorage, which is `localStorage` on the web).
