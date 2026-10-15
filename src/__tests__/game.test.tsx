@@ -13,6 +13,7 @@ import { FX_LIFETIME } from '../fx';
 import Game from '../Game';
 import { comboRate, loadSounds, play } from '../sound';
 import * as storage from '../storage';
+import { emptyStats } from '../stats';
 import { metrics } from '../theme';
 
 jest.mock('expo-haptics', () => ({
@@ -102,6 +103,7 @@ function capturePans() {
 }
 
 const savedGame = async () => storage.parseSave(await AsyncStorage.getItem('overclock.game'))!.game;
+const savedStats = async () => storage.parseStats(await AsyncStorage.getItem('overclock.stats'));
 
 function pointer(pans: PanGesture[], n: number) {
   const { handlerTag } = pans.slice(-3)[n - 1];
@@ -328,6 +330,47 @@ describe('game over', () => {
   });
 });
 
+describe('stats', () => {
+  it('count a finished game, but not a restart before any part was placed', async () => {
+    await mount({ game: lastMoveGame() });
+    await place(1, 'D4');
+    await tick(1000);
+    expect(screen.getByText('Short circuit')).toBeTruthy();
+    expect(await savedStats()).toMatchObject({ games: 1, total: 10 });
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Play again' }));
+    await restart();
+    expect((await savedStats()).games).toBe(1);
+  });
+
+  it('count a restarted game with its line clear and emptied board', async () => {
+    const game = blankGame();
+    for (let c = 1; c < N; c++) game.grid[c] = 2;
+    await mount({ game });
+    await place(1, 'A1');
+    await restart();
+    expect(await savedStats()).toMatchObject({
+      games: 1,
+      total: 3110,
+      lines: 1,
+      perfects: 1,
+      bestCombo: 1,
+    });
+  });
+
+  it('open from the peak score with the totals so far', async () => {
+    const stats = { ...emptyStats(), games: 3, total: 3000, circuits: 7 };
+    await mount({ game: blankGame({ best: 2500 }), saved: { stats: JSON.stringify(stats) } });
+    await fireEvent.press(screen.getByRole('button', { name: 'Peak score 2,500' }));
+    expect(screen.getByLabelText('Games played: 3')).toBeTruthy();
+    expect(screen.getByLabelText('Average score: 1,000')).toBeTruthy();
+    expect(screen.getByLabelText('Peak score: 2,500')).toBeTruthy();
+    expect(screen.getByLabelText('Circuits completed: 7')).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: 'Done' }));
+    expect(screen.queryByLabelText('Games played: 3')).toBeNull();
+  });
+});
+
 describe('help and settings', () => {
   it('opens the rules on first launch and remembers they were seen', async () => {
     await mount({ saved: { helpSeen: 'false' } });
@@ -481,6 +524,22 @@ describe('daily circuit', () => {
     await tick(1000);
     expect(vibrations()).toBe(0);
     expect(sounds()).toEqual([]);
+  });
+
+  it('counts a finished daily in the stats once, apart from endless games', async () => {
+    await mount({ saved: savedRun(lastMoveGame(), { day: DAY - 1, score: 900, circuits: 1, streak: 4 }) });
+    await fireEvent.press(dailyButton());
+    await place(1, 'D4');
+    await tick(1000);
+    expect(await savedStats()).toMatchObject({ games: 0, dailies: 1, bestDaily: 10, bestStreak: 5 });
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Back to endless' }));
+    await fireEvent.press(dailyButton());
+    await fireEvent.press(screen.getByRole('button', { name: 'Back to endless' }));
+    expect((await savedStats()).dailies).toBe(1);
+    await fireEvent.press(screen.getByRole('button', { name: /^Peak score/ }));
+    expect(screen.getByLabelText('Dailies played: 1')).toBeTruthy();
+    expect(screen.getByLabelText('Current streak: 5')).toBeTruthy();
   });
 
   it('marks the next daily as not played yet once midnight passes', async () => {

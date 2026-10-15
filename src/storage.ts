@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import type { DailyRecord, DailyRun } from './daily';
 import { isGameState, N, pickTerminals, repairGame, type GameState } from './engine';
+import { emptyStats, type Stats } from './stats';
 
 const KEY = {
   game: 'overclock.game',
@@ -11,6 +12,7 @@ const KEY = {
   help: 'overclock.helpSeen',
   daily: 'overclock.daily',
   record: 'overclock.dailyRecord',
+  stats: 'overclock.stats',
 };
 export const SAVE_VERSION = 6;
 
@@ -27,12 +29,14 @@ export interface Saved {
   helpSeen: boolean;
   daily: DailyRun | null;
   record: DailyRecord | null;
+  stats: Stats;
 }
 
 const UNREAD = Number.POSITIVE_INFINITY;
 let storedBest = UNREAD;
 let gameWritable = false;
 let dailyWritable = false;
+let statsWritable = false;
 
 const FAILED = Symbol('read failed');
 
@@ -130,8 +134,18 @@ export function parseRecord(raw: string | null): DailyRecord | null {
   return { day: r.day as number, score: r.score as number, circuits: r.circuits as number, streak: r.streak as number };
 }
 
+export function parseStats(raw: string | null): Stats {
+  const data = parseJson(raw);
+  const stats = emptyStats();
+  for (const key of Object.keys(stats) as (keyof Stats)[]) {
+    const v = data?.[key];
+    if (isCount(v)) stats[key] = v;
+  }
+  return stats;
+}
+
 export async function loadSaved(): Promise<Saved> {
-  const [game, best, haptics, sound, help, daily, record] = await Promise.all([
+  const [game, best, haptics, sound, help, daily, record, stats] = await Promise.all([
     read(KEY.game),
     read(KEY.best),
     read(KEY.haptics),
@@ -139,9 +153,11 @@ export async function loadSaved(): Promise<Saved> {
     read(KEY.help),
     read(KEY.daily),
     read(KEY.record),
+    read(KEY.stats),
   ]);
   gameWritable = game !== FAILED;
   dailyWritable = daily !== FAILED && record !== FAILED;
+  statsWritable = stats !== FAILED;
   const stored = best === FAILED ? -1 : Number(best);
   const bestNum = Number.isSafeInteger(stored) && stored >= 0 ? stored : 0;
   storedBest = best === FAILED ? UNREAD : bestNum;
@@ -153,6 +169,7 @@ export async function loadSaved(): Promise<Saved> {
     helpSeen: help === FAILED || help === 'true',
     daily: daily === FAILED ? null : parseDaily(daily),
     record: record === FAILED ? null : parseRecord(record),
+    stats: stats === FAILED ? emptyStats() : parseStats(stats),
   };
 }
 
@@ -172,6 +189,10 @@ export function saveDaily(run: DailyRun) {
 
 export function saveRecord(record: DailyRecord) {
   if (dailyWritable) AsyncStorage.setItem(KEY.record, JSON.stringify(record)).catch(() => {});
+}
+
+export function saveStats(stats: Stats) {
+  if (statsWritable) AsyncStorage.setItem(KEY.stats, JSON.stringify(stats)).catch(() => {});
 }
 
 export function saveHaptics(on: boolean) {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from '@jest/globals';
 
-import { advanceDaily, dailyRand, dayNumber, finishDaily, shareText, startDaily } from '../daily';
+import { advanceDaily, currentStreak, dailyRand, dayNumber, finishDaily, shareText, startDaily } from '../daily';
 import type { PlaceResult } from '../engine';
 
 describe('dayNumber', () => {
@@ -45,6 +45,16 @@ describe('finishDaily', () => {
     expect(finishDaily(null, run)).toEqual({ day: 10, score: 0, circuits: 2, streak: 1 });
     expect(finishDaily({ day: 9, score: 500, circuits: 1, streak: 4 }, run).streak).toBe(5);
     expect(finishDaily({ day: 8, score: 500, circuits: 1, streak: 4 }, run).streak).toBe(1);
+  });
+});
+
+describe('currentStreak', () => {
+  it('lasts until a whole day passes without a finished daily', () => {
+    const record = { day: 10, score: 500, circuits: 1, streak: 4 };
+    expect(currentStreak(null, 10)).toBe(0);
+    expect(currentStreak(record, 10)).toBe(4);
+    expect(currentStreak(record, 11)).toBe(4);
+    expect(currentStreak(record, 12)).toBe(0);
   });
 });
 

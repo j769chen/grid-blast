@@ -9,14 +9,17 @@ import {
   parseDaily,
   parseRecord,
   parseSave,
+  parseStats,
   saveDaily,
   saveGame,
   saveHaptics,
   saveHelpSeen,
   saveRecord,
   saveSound,
+  saveStats,
   SAVE_VERSION,
 } from '../storage';
+import { emptyStats } from '../stats';
 
 const game = (best = 0) => newGame(best, () => 0.5);
 const stored = (key: string) => AsyncStorage.getItem(key);
@@ -214,6 +217,7 @@ describe('loadSaved and saveGame', () => {
         helpSeen: false,
         daily: null,
         record: null,
+        stats: emptyStats(),
       });
     });
     saveGame({ ...game(), score: 50, best: 50 }, 0);
@@ -293,5 +297,35 @@ describe('daily circuit', () => {
     await flush();
     expect(await stored('overclock.daily')).toBe('kept');
     expect(await stored('overclock.dailyRecord')).toBeNull();
+  });
+});
+
+describe('stats', () => {
+  const stats = { ...emptyStats(), games: 4, total: 9000, lines: 31, bestCombo: 6, bestStreak: 2 };
+
+  it('start at zero and keep every change', async () => {
+    expect((await loadSaved()).stats).toEqual(emptyStats());
+    saveStats(stats);
+    await flush();
+    expect((await loadSaved()).stats).toEqual(stats);
+  });
+
+  it('read damaged or partial saves as zero for each bad number', () => {
+    expect(parseStats(null)).toEqual(emptyStats());
+    expect(parseStats('nope')).toEqual(emptyStats());
+    expect(parseStats(JSON.stringify({ games: 3, lines: -1, circuits: 2.5, total: '90' }))).toEqual({
+      ...emptyStats(),
+      games: 3,
+    });
+  });
+
+  it('are not overwritten when they could not be read', async () => {
+    await AsyncStorage.setItem('overclock.stats', 'kept');
+    await withFailedReads(['overclock.stats'], async () => {
+      expect((await loadSaved()).stats).toEqual(emptyStats());
+    });
+    saveStats(stats);
+    await flush();
+    expect(await stored('overclock.stats')).toBe('kept');
   });
 });

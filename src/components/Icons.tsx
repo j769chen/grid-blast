@@ -53,3 +53,11 @@ export function CalendarIcon({ size = 19, color }: IconProps) {
     </Svg>
   );
 }
+
+export function StatsIcon({ size = 19, color }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path d="M5 20v-6M12 20V5M19 20V10" stroke={color} {...stroke} strokeWidth={3.2} />
+    </Svg>
+  );
+}
