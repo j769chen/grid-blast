@@ -20,7 +20,7 @@ The privacy and support pages are `public/privacy/` and `public/support/`. They 
 | `feature-graphic.png`       | Google Play feature graphic, 1024×500, made from `feature-graphic.html` |
 | `play-icon.png`             | Google Play icon, 512×512                                               |
 
-The screenshots come from the web build in Chrome at those viewport sizes, with seeded games: a mid-game board, a circuit preview mid-drag, a finished daily and the rules.
+The screenshots come from the web app in Chrome at those viewport sizes, with seeded games: a mid-game board, a circuit preview mid-drag, a finished daily, the rules and the stats panel. To retake them after a UI change, run `npx expo start --web`, then `node scripts/store-screenshots.mjs`. It drives Chrome headless and overwrites `screenshots/`. Set `APP_URL` if the dev server isn't on port 8081, and `CHROME` if Chrome isn't in `/Applications`.
 
 ## Google Play listing
 
