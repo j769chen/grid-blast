@@ -126,6 +126,7 @@ src/format.ts           number formatting
 src/components/         Board, Tray, Ghost, Shadow, Hud, Sheet, Help, Stats, Fx, GameOver, Led, ErrorBoundary, Background, Icons
 src/__tests__/          unit tests
 scripts/make-sounds.mjs synthesizes the sound effects into assets/sounds/
+scripts/store-screenshots.mjs retakes the store screenshots from the web app
 public/                 privacy and support pages, copied into the web build
 store/                  store listing, screenshots and launch checklist; App Store text is in store.config.json
 ```
